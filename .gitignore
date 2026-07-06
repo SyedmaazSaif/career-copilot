@@ -1,0 +1,26 @@
+# secrets and local config
+.env
+
+# PERSONAL DATA — never commit. Your real profile stays on your machine only.
+# The shipped template master_profile.example.yaml IS committed; your filled-in
+# master_profile.yaml is not.
+master_profile.yaml
+
+# node
+node_modules/
+dist/
+
+# python
+backend/.venv/
+__pycache__/
+*.pyc
+
+# local data (SQLite db with your profile + scanned jobs, generated packs, transcripts)
+backend/data/
+
+# internal build log (not needed by users of the shared project)
+PROGRESS.md
+
+# os
+.DS_Store
+Thumbs.db

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Apply</title>
+    <style>
+      :root {
+        --ink: #1b2733;
+        --steel: #edeff3;
+        --petrol: #0e7c7b;
+        --slate-muted: #667284;
+        --rose: #c4566a;
+        --line: rgba(102, 114, 132, 0.3);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; font-family: Inter, system-ui, sans-serif; }
+      body { display: flex; flex-direction: column; background: var(--steel); }
+      .toolbar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line);
+        flex: none;
+      }
+      .tbtn {
+        border: 1px solid var(--line); background: #fff; color: var(--ink);
+        width: 32px; height: 32px; border-radius: 7px; cursor: pointer;
+        font-size: 15px; line-height: 1; display: inline-flex;
+        align-items: center; justify-content: center;
+      }
+      .tbtn:hover { background: #f4f6f9; }
+      .tbtn:disabled { opacity: 0.4; cursor: default; }
+      .addr {
+        flex: 1; font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 12px; color: var(--slate-muted);
+        background: var(--steel); border: 1px solid var(--line);
+        border-radius: 7px; padding: 7px 12px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .open-ext {
+        border: 1px solid var(--petrol); background: var(--petrol); color: #fff;
+        border-radius: 7px; padding: 0 14px; height: 32px; cursor: pointer;
+        font-size: 12.5px; font-weight: 500; white-space: nowrap;
+      }
+      .open-ext:hover { filter: brightness(1.05); }
+      .stage { flex: 1; position: relative; }
+      webview { position: absolute; inset: 0; border: none; }
+      .error {
+        position: absolute; inset: 0; display: none;
+        flex-direction: column; align-items: center; justify-content: center;
+        gap: 14px; text-align: center; padding: 30px; background: var(--steel);
+      }
+      .error.show { display: flex; }
+      .error h2 { margin: 0; font-size: 16px; color: var(--ink); }
+      .error p { margin: 0; color: var(--slate-muted); font-size: 13px; max-width: 44ch; }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button class="tbtn" id="back" title="Back" disabled>&#9664;</button>
+      <button class="tbtn" id="forward" title="Forward" disabled>&#9654;</button>
+      <button class="tbtn" id="reload" title="Reload">&#8635;</button>
+      <span class="addr" id="addr">Loading…</span>
+      <button class="open-ext" id="openExt">Open in system browser</button>
+    </div>
+    <div class="stage">
+      <webview id="view" src="about:blank"></webview>
+      <div class="error" id="error">
+        <h2>This page could not open inside the app</h2>
+        <p id="errdetail">The site may block embedding. You can still open it in your normal browser.</p>
+        <button class="open-ext" id="openExt2">Open in system browser</button>
+      </div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const target = params.get("url") || "about:blank";
+      const view = document.getElementById("view");
+      const addr = document.getElementById("addr");
+      const back = document.getElementById("back");
+      const forward = document.getElementById("forward");
+      const errorBox = document.getElementById("error");
+      const errdetail = document.getElementById("errdetail");
+
+      addr.textContent = target;
+      view.src = target;
+
+      function refreshNav() {
+        try {
+          addr.textContent = view.getURL() || target;
+          back.disabled = !view.canGoBack();
+          forward.disabled = !view.canGoForward();
+        } catch (e) { /* webview not ready yet */ }
+      }
+      view.addEventListener("did-navigate", refreshNav);
+      view.addEventListener("did-navigate-in-page", refreshNav);
+      view.addEventListener("dom-ready", () => { errorBox.classList.remove("show"); refreshNav(); });
+      view.addEventListener("did-fail-load", (e) => {
+        if (e.errorCode === -3) return; // aborted (e.g. a redirect) — not a real failure
+        errdetail.textContent =
+          "This site may block embedding (" + (e.errorDescription || "load error") +
+          "). You can still open it in your normal browser.";
+        errorBox.classList.add("show");
+      });
+
+      function openSystem() {
+        const u = (() => { try { return view.getURL(); } catch (e) { return target; } })() || target;
+        if (window.applyBridge && window.applyBridge.openExternal) {
+          window.applyBridge.openExternal(u);
+        }
+      }
+
+      document.getElementById("back").onclick = () => { try { view.canGoBack() && view.goBack(); } catch (e) {} };
+      document.getElementById("forward").onclick = () => { try { view.canGoForward() && view.goForward(); } catch (e) {} };
+      document.getElementById("reload").onclick = () => { try { view.reload(); } catch (e) {} };
+      document.getElementById("openExt").onclick = openSystem;
+      document.getElementById("openExt2").onclick = openSystem;
+    </script>
+  </body>
+</html>
