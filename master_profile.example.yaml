@@ -1,0 +1,80 @@
+# master_profile.example.yaml — a template you fill in with YOUR details.
+#
+# HOW TO USE:
+#   1. Copy this file to "master_profile.yaml" in the same folder.
+#   2. Replace every value below with your own real information.
+#   3. In the app, open Profile and click "Import from YAML".
+#
+# The person below (Alex Rivera) is a made-up example so you can see the shape.
+# Nothing here is real. Delete it and put in your own facts. The golden rule of
+# this app: it only ever uses what you put in your profile. It never invents.
+
+profile:
+  name: Alex Rivera
+  title: Product Manager
+  email: alex.rivera@example.com
+  phone: "+1-555-0100"
+  location: Remote (based in Example City)
+  linkedin: linkedin.com/in/example
+  portfolio: https://example.com
+  summary: >-
+    Product manager with several years building and scaling consumer products.
+    Comfortable owning a product end to end: discovery, roadmap, delivery, and
+    growth. Replace this summary with your own, in your own words.
+  work_authorization: Authorized to work remotely. Add your real work-authorization details here.
+  notice_period: 1 month
+  salary_expectation_usd: "USD 80,000 - 110,000 / year"
+  salary_expectation_pkr: ""
+
+languages:
+  - name: English
+    proficiency: Native
+  - name: Spanish
+    proficiency: Conversational
+
+experiences:
+  - company: Example Corp
+    role: Product Manager
+    location: Remote
+    dates: Jan 2022 – Present
+    context: Consumer mobile product with a subscription model.
+    bullets:
+      - text: >-
+          Owned the product roadmap for a subscription app and grew monthly
+          active users by a meaningful margin through onboarding improvements.
+        skill_tags: [Product strategy, Roadmap planning, Activation & retention funnels]
+      - text: >-
+          Ran pricing experiments that improved conversion, working closely with
+          engineering and design to ship iteratively.
+        skill_tags: [Subscription pricing, A/B iteration]
+  - company: Another Company
+    role: Associate Product Manager
+    location: Example City
+    dates: Jun 2019 – Dec 2021
+    context: ""
+    bullets:
+      - text: >-
+          Translated customer research and data into a prioritized backlog and
+          shipped features on a regular release cadence.
+        skill_tags: [Backlog management, Funnel analysis]
+
+education:
+  - degree: Bachelor's degree
+    school: Example University
+    location: Example City
+    dates: 2019
+
+certifications:
+  - name: A relevant certification
+    issuer: Issuing Body
+    date: 2023
+
+skills:
+  - { name: Product strategy, category: Product & Delivery, proficiency: Proficient }
+  - { name: Roadmap planning, category: Product & Delivery, proficiency: Proficient }
+  - { name: Backlog management, category: Product & Delivery, proficiency: Proficient }
+  - { name: A/B iteration, category: Product & Delivery, proficiency: Familiar }
+  - { name: Funnel analysis, category: Product & Delivery, proficiency: Proficient }
+  - { name: Subscription pricing, category: Growth & Monetization, proficiency: Familiar }
+  - { name: Activation & retention funnels, category: Growth & Monetization, proficiency: Proficient }
+  - { name: Stakeholder reporting, category: Analytics & Tools, proficiency: Proficient }

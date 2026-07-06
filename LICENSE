@@ -1,0 +1,31 @@
+career-copilot — Personal Use License
+
+Copyright (c) 2026 Syedmaazsaif.com
+
+All rights reserved, except as granted below.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software (the "Software"), to download, install, run, and modify the
+Software for their own personal, non-commercial job search, subject to the
+following conditions:
+
+1. This copyright notice and this permission notice must be kept in all copies
+   or substantial portions of the Software.
+
+2. You may not sell the Software, or offer it as a paid product or paid service,
+   without the copyright holder's written permission.
+
+3. You are responsible for your own data. This Software stores everything
+   locally on your machine. Do not commit your personal profile, database, or
+   secrets to any public repository.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This Software scrapes public job boards and depends on third-party websites that
+may change or block access at any time. You are responsible for using it in line
+with those sites' terms of service.
