@@ -96,11 +96,10 @@ function openApplyWindow(targetUrl) {
       webviewTag: true,
     },
   });
-  // loadFile builds a correct file:// URL across platforms (a hand-built
-  // "file://" + a Windows backslash path does not load). query -> ?url=...
-  win.loadFile(path.join(__dirname, "apply-window.html"), {
-    query: { url: targetUrl },
-  });
+  // Load the local shell, then hand it the job URL over IPC once it is ready.
+  // (Passing the URL via a file:// query string proved unreliable.)
+  win.loadFile(path.join(__dirname, "apply-window.html"));
+
   win.webContents.on("did-fail-load", (_e, code, desc, failedUrl) => {
     console.error(`[apply] shell failed to load ${failedUrl}: ${code} ${desc}`);
     // If our own shell page can't load, don't dead-end — open in the system browser.
@@ -110,11 +109,13 @@ function openApplyWindow(targetUrl) {
     }
   });
   win.webContents.on("did-finish-load", () => {
-    console.log("[apply] shell loaded ok");
+    console.log("[apply] shell loaded ok; sending url");
+    win.webContents.send("apply-url", targetUrl);
   });
-  // Log inner job-page (webview) load results too.
+  // Log where the inner job-page (webview) actually navigates, so a blank page
+  // is distinguishable from the real page.
   win.webContents.on("did-attach-webview", (_e, wc) => {
-    wc.on("did-finish-load", () => console.log("[apply] job page loaded ok"));
+    wc.on("did-navigate", (_ev, u) => console.log(`[apply] job page navigated to ${u}`));
     wc.on("did-fail-load", (_ev, code, desc, u) => {
       if (code !== -3) console.error(`[apply] job page failed ${u}: ${code} ${desc}`);
     });
