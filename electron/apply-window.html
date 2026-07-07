@@ -71,8 +71,7 @@
     </div>
 
     <script>
-      const params = new URLSearchParams(location.search);
-      const target = params.get("url") || "about:blank";
+      let target = "about:blank";
       const view = document.getElementById("view");
       const addr = document.getElementById("addr");
       const back = document.getElementById("back");
@@ -80,8 +79,15 @@
       const errorBox = document.getElementById("error");
       const errdetail = document.getElementById("errdetail");
 
-      addr.textContent = target;
-      view.src = target;
+      // The main process sends the job URL once this shell has loaded.
+      if (window.applyBridge && window.applyBridge.onApplyUrl) {
+        window.applyBridge.onApplyUrl((u) => {
+          target = u;
+          addr.textContent = u;
+          errorBox.classList.remove("show");
+          view.loadURL ? view.loadURL(u) : (view.src = u);
+        });
+      }
 
       function refreshNav() {
         try {
