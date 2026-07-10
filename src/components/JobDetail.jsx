@@ -4,6 +4,16 @@ import MatchMeter from "./MatchMeter.jsx";
 
 const STAGES = ["Sourced", "Applied", "Screening", "Interview", "Offer", "Closed"];
 
+// "$120k", "$120k–$150k", or null when unknown.
+function fmtSalary(job) {
+  const lo = job.salary_min;
+  const hi = job.salary_max;
+  if (!lo && !hi) return null;
+  const k = (n) => "$" + Math.round(n / 1000) + "k";
+  if (lo && hi && lo !== hi) return k(lo) + "–" + k(hi);
+  return k(hi || lo);
+}
+
 // Prefer the native in-app browser (Electron). In the dev web build, fall back
 // to a new tab.
 function openToApply(url) {
@@ -67,6 +77,11 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
                     )}
                     {job.employment_type && job.employment_type !== "unknown" && (
                       <span className="work-pill work-emp">{job.employment_type}</span>
+                    )}
+                    {fmtSalary(job) && (
+                      <span className="pay-pill mono" title={job.salary_text}>
+                        {fmtSalary(job)}
+                      </span>
                     )}
                   </div>
                 </div>
