@@ -13,6 +13,7 @@ const NAV = [
 export default function App() {
   const [view, setView] = useState("profile");
   const [online, setOnline] = useState(null); // null=checking, true, false
+  const [update, setUpdate] = useState(null); // {current, latest, url} | null
 
   useEffect(() => {
     let alive = true;
@@ -23,6 +24,12 @@ export default function App() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  // Listen for the main process's update check (Electron only).
+  useEffect(() => {
+    const unsub = window.copilot?.onUpdateAvailable?.((info) => setUpdate(info));
+    return unsub;
   }, []);
 
   return (
@@ -52,6 +59,26 @@ export default function App() {
       </aside>
 
       <main className="content">
+        {update && (
+          <div className="update-banner">
+            <span>
+              <strong>Update available</strong> — career-copilot {update.latest} is
+              out (you have {update.current}). Run <code>git pull</code> in the
+              project folder, then restart.
+            </span>
+            <span className="update-banner-actions">
+              <button
+                className="link-btn"
+                onClick={() => window.copilot?.openExternal?.(update.url)}
+              >
+                View release
+              </button>
+              <button className="icon-btn" onClick={() => setUpdate(null)} aria-label="Dismiss">
+                ×
+              </button>
+            </span>
+          </div>
+        )}
         {view === "profile" && <ProfilePage />}
         {view === "jobs" && <JobsPage />}
         {view === "settings" && <SettingsPage />}
