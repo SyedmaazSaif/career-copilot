@@ -60,6 +60,41 @@ def _ensure_columns() -> None:
                     )
 
 
+def _backfill_descriptions() -> None:
+    """Clean HTML/entities out of descriptions scanned before text cleaning
+    existed. Only touches rows that still look like HTML, so it stops doing
+    work after the first pass."""
+    from sqlalchemy import or_
+
+    from .models import Job
+    from .textutil import clean_description
+
+    with SessionLocal() as session:
+        rows = (
+            session.query(Job)
+            .filter(
+                or_(
+                    Job.description.like("%<%"),
+                    Job.description.like("%&#%"),
+                    Job.description.like("%&amp;%"),
+                    Job.description.like("%&nbsp;%"),
+                    Job.description.like("%&quot;%"),
+                    Job.description.like("%&rsquo;%"),
+                    Job.description.like("%&lt;%"),
+                )
+            )
+            .all()
+        )
+        changed = 0
+        for job in rows:
+            cleaned = clean_description(job.description or "")
+            if cleaned != job.description:
+                job.description = cleaned
+                changed += 1
+        if changed:
+            session.commit()
+
+
 def _backfill_salaries() -> None:
     """Parse salaries for jobs scanned before salary parsing existed. Runs once
     per row (guarded by salary_parsed), so it is cheap after the first pass."""
@@ -86,6 +121,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
+    _backfill_descriptions()
     _backfill_salaries()
 
     # Ensure the singleton profile row (id=1) always exists so the UI has a

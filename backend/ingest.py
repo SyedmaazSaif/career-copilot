@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from .models import Job
 from .salary import parse_salary
 from .scoring import extract_requirements, score_job
+from .textutil import clean_description
 
 _COMPANY_SUFFIX = re.compile(
     r"\b(inc|inc\.|llc|ltd|ltd\.|limited|gmbh|corp|corporation|co|plc|bv|ag)\b",
@@ -92,7 +93,7 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
 
         # New job — score and insert
         score, reason, red_flags, work_type, employment_type = score_job(raw, ctx)
-        description = raw.get("description", "") or ""
+        description = clean_description(raw.get("description", "") or "")
         salary = parse_salary(f"{description} {title}")
         job = Job(
             source=raw.get("source", ""),
@@ -100,8 +101,8 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
             company=company,
             location=raw.get("location", "") or "Remote",
             url=url,
-            description=raw.get("description", "") or "",
-            requirements=extract_requirements(raw.get("description", "") or ""),
+            description=description,
+            requirements=extract_requirements(description),
             posted=raw.get("posted", "") or "",
             tags=raw.get("tags", []) or [],
             work_type=work_type,
