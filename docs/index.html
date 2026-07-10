@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Career Copilot — Free Open-Source AI Job Search Assistant & Application Tracker</title>
+    <meta
+      name="description"
+      content="Career Copilot is a free, open-source, private desktop app for job seekers: scan job boards, score roles against your resume, generate tailored ATS-friendly CVs, and track job applications in a Kanban pipeline. No paid API, no account, no data leaves your machine."
+    />
+    <meta
+      name="keywords"
+      content="job search, job hunt, job application tracker, resume builder, CV generator, ATS resume, AI job search assistant, remote jobs, applicant tracking system, job board aggregator, free job tracker, open source job search"
+    />
+    <link rel="canonical" href="https://syedmaazsaif.github.io/career-copilot/" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Career Copilot — Free Open-Source AI Job Search Assistant & Application Tracker" />
+    <meta property="og:description" content="Scan job boards, score roles against your resume, generate tailored ATS CVs, and track applications — a free, private, local desktop app for job seekers." />
+    <meta property="og:url" content="https://syedmaazsaif.github.io/career-copilot/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Career Copilot — Free AI Job Search Assistant & Application Tracker" />
+    <meta name="twitter:description" content="A free, open-source, private desktop app that runs your whole job hunt: scan, score, tailor CVs, and track applications." />
+
+    <!-- Structured data for rich results -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Career Copilot",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Windows, macOS",
+        "description": "Free open-source AI job search assistant and job application tracker for job seekers: scan job boards, score matches to your resume, generate tailored ATS-friendly CVs, and track applications in a Kanban pipeline. Private, local, no paid API.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "url": "https://github.com/SyedmaazSaif/career-copilot",
+        "license": "https://github.com/SyedmaazSaif/career-copilot/blob/main/LICENSE"
+      }
+    </script>
+
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      :root {
+        --ink: #0f1e3d;
+        --muted: #46567a;
+        --accent: #2563eb;
+        --glass: rgba(255, 255, 255, 0.55);
+        --glass-border: rgba(255, 255, 255, 0.6);
+        --radius: 16px;
+      }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        color: var(--ink);
+        line-height: 1.6;
+        background:
+          radial-gradient(1100px 620px at 88% -12%, rgba(59, 130, 246, 0.45), transparent 62%),
+          radial-gradient(900px 520px at -10% 110%, rgba(99, 102, 241, 0.35), transparent 60%),
+          linear-gradient(150deg, #eef4ff 0%, #d3e2fb 30%, #a9c7f5 64%, #7aa6ef 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+      a { color: var(--accent); text-decoration: none; }
+
+      header.site { padding: 22px 0; }
+      .nav { display: flex; align-items: center; justify-content: space-between; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+      .brand .mark {
+        width: 16px; height: 16px; border-radius: 5px; background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.22);
+      }
+      .nav-links { display: flex; gap: 20px; align-items: center; font-size: 14.5px; }
+
+      .btn {
+        display: inline-block; background: var(--accent); color: #fff;
+        padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15px;
+        border: 1px solid var(--accent);
+      }
+      .btn:hover { filter: brightness(1.06); }
+      .btn.ghost {
+        background: var(--glass); color: var(--ink); border: 1px solid var(--glass-border);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      }
+
+      .hero { padding: 70px 0 50px; text-align: center; }
+      .hero h1 { font-size: clamp(30px, 5vw, 50px); line-height: 1.12; letter-spacing: -0.02em; }
+      .hero .grad { background: linear-gradient(90deg, #1d4ed8, #4f46e5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .hero p.sub { font-size: clamp(16px, 2.2vw, 20px); color: var(--muted); max-width: 60ch; margin: 20px auto 0; }
+      .cta { display: flex; gap: 14px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+      .pill-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+      .pill {
+        font-size: 12.5px; color: #1e3a8a; background: rgba(37, 99, 235, 0.12);
+        border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 20px; padding: 4px 12px;
+      }
+
+      section { padding: 30px 0; }
+      .section-title { font-size: clamp(22px, 3vw, 30px); letter-spacing: -0.01em; margin-bottom: 8px; text-align: center; }
+      .section-lead { text-align: center; color: var(--muted); max-width: 62ch; margin: 0 auto 30px; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+      .card {
+        background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius);
+        padding: 24px; backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+        box-shadow: 0 6px 28px rgba(30, 58, 138, 0.14);
+      }
+      .card h3 { font-size: 17px; margin-bottom: 8px; }
+      .card p { font-size: 14.5px; color: var(--muted); }
+      .card .ico { font-size: 24px; margin-bottom: 10px; display: block; }
+
+      .steps { counter-reset: step; max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+      .step {
+        display: flex; gap: 16px; align-items: flex-start;
+        background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; padding: 18px 20px;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      }
+      .step::before {
+        counter-increment: step; content: counter(step);
+        flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+      }
+      .step h3 { font-size: 15.5px; }
+      .step p { font-size: 14px; color: var(--muted); }
+
+      .privacy { text-align: center; }
+      .privacy .card { max-width: 720px; margin: 0 auto; }
+
+      .final { text-align: center; padding: 56px 0; }
+      .final h2 { font-size: clamp(24px, 3.4vw, 34px); margin-bottom: 18px; }
+
+      footer.site { padding: 34px 0; text-align: center; color: var(--muted); font-size: 13.5px; border-top: 1px solid rgba(30, 58, 138, 0.14); margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <nav class="nav">
+          <div class="brand"><span class="mark"></span> Career Copilot</div>
+          <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#how">How it works</a>
+            <a href="https://github.com/SyedmaazSaif/career-copilot">GitHub</a>
+          </div>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <h1>The free, private way to run your <span class="grad">entire job search</span></h1>
+          <p class="sub">
+            Career Copilot is a free, open-source desktop app for job seekers. It scans job boards,
+            scores every role against your resume, generates tailored ATS-friendly CVs, and tracks
+            your applications in a drag-and-drop pipeline — all on your own computer.
+          </p>
+          <div class="cta">
+            <a class="btn" href="https://github.com/SyedmaazSaif/career-copilot">Get it on GitHub</a>
+            <a class="btn ghost" href="https://github.com/SyedmaazSaif/career-copilot/blob/main/INSTALL.md">Install guide</a>
+          </div>
+          <div class="pill-row">
+            <span class="pill">100% free</span>
+            <span class="pill">Open source</span>
+            <span class="pill">No account</span>
+            <span class="pill">Runs locally</span>
+            <span class="pill">No paid API</span>
+          </div>
+        </section>
+
+        <section id="features">
+          <h2 class="section-title">Everything your job hunt needs, in one window</h2>
+          <p class="section-lead">
+            A job board aggregator, resume/CV builder, and application tracker rolled into one private app.
+          </p>
+          <div class="grid">
+            <div class="card">
+              <span class="ico">🔎</span>
+              <h3>Scan &amp; score job boards</h3>
+              <p>Pulls fresh roles from 9 free job boards daily and scores each one 0–100 against your profile — skills, seniority, work arrangement, visa-friendliness, and domain fit.</p>
+            </div>
+            <div class="card">
+              <span class="ico">📄</span>
+              <h3>Tailored ATS-friendly CVs</h3>
+              <p>Generate a Word CV for any job, built only from your real profile facts and reworded for that role. A verification pass flags anything not traceable to you.</p>
+            </div>
+            <div class="card">
+              <span class="ico">🗂️</span>
+              <h3>Kanban application tracker</h3>
+              <p>Track every job from Sourced → Applied → Screening → Interview → Offer with draggable cards, a filterable table, and an analytics view of your funnel.</p>
+            </div>
+            <div class="card">
+              <span class="ico">🌐</span>
+              <h3>Apply from inside the app</h3>
+              <p>Open any listing in a built-in browser and apply yourself — the app never auto-submits, so you stay clear of bot-submission filters.</p>
+            </div>
+            <div class="card">
+              <span class="ico">🎯</span>
+              <h3>Add your own sources</h3>
+              <p>Point it at any RSS feed, a Greenhouse or Lever company board, or a single job by pasting its URL. Remote, hybrid, or on-site — you choose.</p>
+            </div>
+            <div class="card">
+              <span class="ico">🔒</span>
+              <h3>Private by design</h3>
+              <p>Everything runs on your machine. No sign-up, no subscription, no paid API, and your resume and applications never leave your computer.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="how">
+          <h2 class="section-title">How it works</h2>
+          <p class="section-lead">From a blank profile to a tracked application in four steps.</p>
+          <div class="steps">
+            <div class="step">
+              <div>
+                <h3>Import your profile</h3>
+                <p>Paste in or upload your resume — Career Copilot turns it into a structured profile it will never invent facts beyond.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Scan and shortlist</h3>
+                <p>Run a scan and get scored, de-duplicated roles with red-flag warnings, so you spend time only on the ones that fit.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Generate a tailored CV</h3>
+                <p>One click produces an ATS-friendly CV ordered and reworded for that specific job — honestly, from your own experience.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Apply and track</h3>
+                <p>Apply in the built-in browser, then move the card through your pipeline and watch your response rate in analytics.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="privacy">
+          <div class="card">
+            <h3>Free and open source — forever</h3>
+            <p>
+              Career Copilot is MIT-licensed and fully open source. There's no premium tier, no
+              data harvesting, and nothing to sign up for. Clone it, read every line, and make it yours.
+            </p>
+          </div>
+        </section>
+
+        <section class="final">
+          <h2>Start your job search the private way</h2>
+          <a class="btn" href="https://github.com/SyedmaazSaif/career-copilot">View on GitHub</a>
+        </section>
+      </main>
+
+      <footer class="site">
+        Career Copilot — a free, open-source AI job search assistant and application tracker for job seekers.
+        <br />
+        <a href="https://github.com/SyedmaazSaif/career-copilot">github.com/SyedmaazSaif/career-copilot</a>
+      </footer>
+    </div>
+  </body>
+</html>

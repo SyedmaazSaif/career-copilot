@@ -62,7 +62,10 @@
       <button class="open-ext" id="openExt">Open in system browser</button>
     </div>
     <div class="stage">
-      <webview id="view" src="about:blank"></webview>
+      <!-- persist: partition keeps cookies + logins on disk, so signing in to a
+           job site (LinkedIn, Indeed, a company portal) once keeps you signed in
+           on future launches instead of a blank session every time. -->
+      <webview id="view" src="about:blank" partition="persist:apply" allowpopups></webview>
       <div class="error" id="error">
         <h2>This page could not open inside the app</h2>
         <p id="errdetail">The site may block embedding. You can still open it in your normal browser.</p>
