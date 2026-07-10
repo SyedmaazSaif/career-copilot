@@ -33,6 +33,10 @@ _COLUMN_ADDITIONS = {
     "job": {
         "work_type": "VARCHAR DEFAULT 'unknown'",
         "employment_type": "VARCHAR DEFAULT 'unknown'",
+        "salary_min": "INTEGER",
+        "salary_max": "INTEGER",
+        "salary_text": "VARCHAR DEFAULT ''",
+        "salary_parsed": "BOOLEAN DEFAULT 0",
     },
     "search_config": {
         "preferred_arrangements": "JSON",
@@ -56,6 +60,25 @@ def _ensure_columns() -> None:
                     )
 
 
+def _backfill_salaries() -> None:
+    """Parse salaries for jobs scanned before salary parsing existed. Runs once
+    per row (guarded by salary_parsed), so it is cheap after the first pass."""
+    from .models import Job
+    from .salary import parse_salary
+
+    with SessionLocal() as session:
+        rows = session.query(Job).filter(Job.salary_parsed.is_(False)).all()
+        for job in rows:
+            info = parse_salary(f"{job.description or ''} {job.title or ''}")
+            if info:
+                job.salary_min = info["min"]
+                job.salary_max = info["max"]
+                job.salary_text = info["text"]
+            job.salary_parsed = True
+        if rows:
+            session.commit()
+
+
 def init_db() -> None:
     """Create tables on first run. Models register themselves on Base."""
     # Import models so their tables are registered before create_all runs.
@@ -63,6 +86,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
+    _backfill_salaries()
 
     # Ensure the singleton profile row (id=1) always exists so the UI has a
     # record to edit from the very first launch.

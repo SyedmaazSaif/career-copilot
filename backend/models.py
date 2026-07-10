@@ -157,6 +157,13 @@ class Job(Base):
     score_reason: Mapped[dict] = mapped_column(JSON, default=dict)  # component breakdown
     red_flags: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Salary (best-effort, parsed from the text; annual USD estimate).
+    # None = unknown/unparsed; salary_parsed guards re-parsing.
+    salary_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    salary_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    salary_text: Mapped[str] = mapped_column(String, default="")  # raw matched text
+    salary_parsed: Mapped[bool] = mapped_column(default=False)
+
     # Dedupe
     dedupe_key: Mapped[str] = mapped_column(String, default="", index=True)
 
