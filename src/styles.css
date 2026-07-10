@@ -868,6 +868,12 @@ body.dragging-cursor * {
   gap: 6px;
   margin-top: 6px;
 }
+.job-card-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
 .job-card-src {
   font-size: 10px;
   color: var(--slate-muted);

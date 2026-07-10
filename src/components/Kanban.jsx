@@ -27,6 +27,16 @@ function isStale(job, scanAt) {
   return new Date(job.last_seen_at).getTime() < new Date(scanAt).getTime();
 }
 
+// "$120k", "$120k–$150k", or null when unknown.
+function fmtSalary(job) {
+  const lo = job.salary_min;
+  const hi = job.salary_max;
+  if (!lo && !hi) return null;
+  const k = (n) => "$" + Math.round(n / 1000) + "k";
+  if (lo && hi && lo !== hi) return k(lo) + "–" + k(hi);
+  return k(hi || lo);
+}
+
 export default function Kanban({ onOpen, onChanged, scanAt }) {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState(null);
@@ -216,11 +226,18 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
                       ) : (
                         <span className="mono job-card-src">{job.source}</span>
                       )}
-                      {job.red_flags.length > 0 && (
-                        <span className="flag-pill" title={job.red_flags.join(" · ")}>
-                          {job.red_flags.length} flag{job.red_flags.length > 1 ? "s" : ""}
-                        </span>
-                      )}
+                      <span className="job-card-foot-right">
+                        {fmtSalary(job) && (
+                          <span className="pay-pill mono" title={job.salary_text}>
+                            {fmtSalary(job)}
+                          </span>
+                        )}
+                        {job.red_flags.length > 0 && (
+                          <span className="flag-pill" title={job.red_flags.join(" · ")}>
+                            {job.red_flags.length} flag{job.red_flags.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </article>
                 );
