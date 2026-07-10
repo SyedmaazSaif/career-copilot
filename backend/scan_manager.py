@@ -61,6 +61,9 @@ def _run(run_id: int) -> None:
                 if config and config.enabled_sources is not None
                 else None
             )
+            locations = (
+                list(config.locations) if config and config.locations else None
+            )
 
         def on_progress(source: str, added: int, total: int) -> None:
             with SessionLocal() as db:
@@ -74,7 +77,10 @@ def _run(run_id: int) -> None:
                 db.commit()
 
         jobs, _counts = run_scan(
-            queries=queries, enabled_sources=enabled, on_progress=on_progress
+            queries=queries,
+            enabled_sources=enabled,
+            on_progress=on_progress,
+            locations=locations,
         )
 
         # User-added custom sources (RSS / Greenhouse / Lever / URL)

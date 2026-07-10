@@ -8,6 +8,7 @@ export default function JobsTable({ onOpen }) {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [locationQ, setLocationQ] = useState("");
   const [stage, setStage] = useState("");
   const [source, setSource] = useState("");
   const [workType, setWorkType] = useState("");
@@ -32,9 +33,28 @@ export default function JobsTable({ onOpen }) {
     [jobs]
   );
 
+  // Relevance search: every whitespace-separated token must appear somewhere in
+  // the job's text (title, company, tags, requirements, description). Partial
+  // and any-order — "fintech pm" matches "Senior Product Manager, Fintech".
+  function matchesRelevance(job, tokens) {
+    if (tokens.length === 0) return true;
+    const hay = [
+      job.title,
+      job.company,
+      job.location,
+      (job.tags || []).join(" "),
+      (job.requirements || []).join(" "),
+      job.description,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return tokens.every((t) => hay.includes(t));
+  }
+
   const filtered = useMemo(() => {
     if (!jobs) return [];
-    const s = search.toLowerCase();
+    const tokens = search.toLowerCase().split(/\s+/).filter(Boolean);
+    const loc = locationQ.toLowerCase();
     return jobs
       .filter((j) => (stage ? j.stage === stage : true))
       .filter((j) => (source ? j.source === source : true))
@@ -43,13 +63,11 @@ export default function JobsTable({ onOpen }) {
       .filter((j) => j.score >= minScore)
       .filter((j) => (flagsOnly ? j.red_flags.length > 0 : true))
       .filter((j) =>
-        s
-          ? j.title.toLowerCase().includes(s) ||
-            j.company.toLowerCase().includes(s)
-          : true
+        loc ? (j.location || "").toLowerCase().includes(loc) : true
       )
+      .filter((j) => matchesRelevance(j, tokens))
       .sort((a, b) => b.score - a.score);
-  }, [jobs, search, stage, source, workType, empType, minScore, flagsOnly]);
+  }, [jobs, search, locationQ, stage, source, workType, empType, minScore, flagsOnly]);
 
   if (jobs === null && !error) return <div className="muted">Loading…</div>;
   if (error) return <div className="banner error">{error}</div>;
@@ -59,9 +77,15 @@ export default function JobsTable({ onOpen }) {
       <div className="filters">
         <input
           className="filter-search"
-          placeholder="Search title or company"
+          placeholder="Search role, company, industry, salary… (any order)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+        />
+        <input
+          className="filter-location"
+          placeholder="Filter by location"
+          value={locationQ}
+          onChange={(e) => setLocationQ(e.target.value)}
         />
         <select value={stage} onChange={(e) => setStage(e.target.value)}>
           <option value="">All stages</option>

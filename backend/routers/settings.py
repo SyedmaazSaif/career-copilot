@@ -41,6 +41,7 @@ def get_search_config(db: Session = Depends(get_db)):
         enabled_sources=config.enabled_sources or [],
         all_sources=ALL_SOURCES,
         preferred_arrangements=config.preferred_arrangements or list(_ARRANGEMENTS),
+        locations=config.locations or [],
     )
 
 
@@ -52,6 +53,7 @@ def update_search_config(payload: SearchConfigIn, db: Session = Depends(get_db))
     config.enabled_sources = [s for s in payload.enabled_sources if s in ALL_SOURCES]
     arr = [a for a in payload.preferred_arrangements if a in _ARRANGEMENTS]
     config.preferred_arrangements = arr or ["remote", "hybrid", "onsite"]
+    config.locations = [loc.strip() for loc in payload.locations if loc.strip()]
     db.commit()
     db.refresh(config)
     return SearchConfigOut(
@@ -59,6 +61,7 @@ def update_search_config(payload: SearchConfigIn, db: Session = Depends(get_db))
         enabled_sources=config.enabled_sources,
         all_sources=ALL_SOURCES,
         preferred_arrangements=config.preferred_arrangements,
+        locations=config.locations or [],
     )
 
 

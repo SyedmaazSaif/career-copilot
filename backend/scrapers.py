@@ -46,10 +46,34 @@ DEFAULT_QUERIES = fj.QUERIES
 ALL_SOURCES: list[str] = [name for name, _ in RSS_SOURCES + QUERY_SOURCES]
 
 
+def build_queries(
+    queries: list[str] | None, locations: list[str] | None
+) -> list[str]:
+    """Effective search terms: the base role queries (a global/remote pass),
+    plus one "<role> <city>" variant per user-added location. Empty locations
+    keeps the original global-only behavior."""
+    base = list(queries or DEFAULT_QUERIES)
+    if not locations:
+        return base
+    effective = list(base)
+    seen = set(base)
+    for loc in locations:
+        loc = loc.strip()
+        if not loc:
+            continue
+        for q in base:
+            combined = f"{q} {loc}"
+            if combined not in seen:
+                seen.add(combined)
+                effective.append(combined)
+    return effective
+
+
 def run_scan(
     queries: list[str] | None = None,
     enabled_sources: list[str] | None = None,
     on_progress: Callable[[str, int, int], None] | None = None,
+    locations: list[str] | None = None,
 ) -> tuple[list[dict], dict]:
     """Run the enabled sources and return (unique_jobs, per_source_counts).
 
@@ -59,7 +83,7 @@ def run_scan(
     on_progress(source_name, added_now, running_total) is called after each
     source so the caller can stream progress.
     """
-    queries = queries or DEFAULT_QUERIES
+    queries = build_queries(queries, locations)
     active = set(enabled_sources) if enabled_sources is not None else set(ALL_SOURCES)
     rss = [(n, f) for n, f in RSS_SOURCES if n in active]
     query_srcs = [(n, f) for n, f in QUERY_SOURCES if n in active]

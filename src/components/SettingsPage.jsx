@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
   const [newTerm, setNewTerm] = useState("");
+  const [newLocation, setNewLocation] = useState("");
 
   useEffect(() => {
     api
@@ -52,6 +53,20 @@ export default function SettingsPage() {
   }
   function removeTerm(t) {
     setConfig((c) => ({ ...c, queries: c.queries.filter((x) => x !== t) }));
+    dirty();
+  }
+  function addLocation() {
+    const l = newLocation.trim();
+    if (!l || (config.locations || []).includes(l)) return;
+    setConfig((c) => ({ ...c, locations: [...(c.locations || []), l] }));
+    setNewLocation("");
+    dirty();
+  }
+  function removeLocation(l) {
+    setConfig((c) => ({
+      ...c,
+      locations: (c.locations || []).filter((x) => x !== l),
+    }));
     dirty();
   }
   function toggleSource(s) {
@@ -81,6 +96,7 @@ export default function SettingsPage() {
         queries: config.queries,
         enabled_sources: config.enabled_sources,
         preferred_arrangements: config.preferred_arrangements,
+        locations: config.locations || [],
       });
       setConfig(saved);
       setStatus("saved");
@@ -142,6 +158,56 @@ export default function SettingsPage() {
               </button>
             </span>
           ))}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Locations to search</h2>
+          <span className="filter-count mono">
+            {(config.locations || []).length} location
+            {(config.locations || []).length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          Add a city or country to also search there — each search term runs a
+          location-specific pass (e.g. "product manager Dubai") on top of the default
+          global/remote search. Leave empty to search everywhere.
+        </p>
+        <div className="term-add">
+          <input
+            placeholder="e.g. Islamabad, Dubai, United Kingdom"
+            value={newLocation}
+            onChange={(e) => setNewLocation(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addLocation()}
+          />
+          <button
+            className="btn-secondary"
+            onClick={addLocation}
+            disabled={!newLocation.trim()}
+          >
+            Add location
+          </button>
+        </div>
+        <div className="term-chips">
+          {(config.locations || []).length === 0 ? (
+            <span className="empty-hint" style={{ padding: 0 }}>
+              No locations added — searching globally / remote-first.
+            </span>
+          ) : (
+            (config.locations || []).map((l) => (
+              <span className="term-chip" key={l}>
+                {l}
+                <button
+                  className="term-remove"
+                  onClick={() => removeLocation(l)}
+                  aria-label={`Remove ${l}`}
+                >
+                  ✕
+                </button>
+              </span>
+            ))
+          )}
         </div>
       </div>
 
