@@ -1,12 +1,19 @@
-# career-copilot
+# Career Copilot — Free Open-Source AI Job Search Assistant & Application Tracker
 
-A free, local desktop app that runs your whole job hunt from one window. It
-scans job boards every day, scores each role against your own profile, and gives
-you a drag-and-drop pipeline to track applications — with a built-in browser so
-you apply without ever leaving the app.
+**Career Copilot is a free, open-source job search app for job seekers.** It runs
+your whole job hunt from one desktop window: it scans job boards daily, scores
+every role against your resume, generates tailored ATS-friendly CVs, and tracks
+your job applications through a drag-and-drop Kanban pipeline — with a built-in
+browser so you apply without ever leaving the app.
 
-Everything runs on your own computer. There is **no paid API, no subscription,
-and no account to create.** Your data never leaves your machine.
+Think of it as a private, local alternative to a job application tracker,
+resume/CV builder, and applicant tracking system rolled into one. Everything runs
+on your own computer. There is **no paid API, no subscription, and no account to
+create.** Your data never leaves your machine.
+
+**Keywords:** job search, job hunt, job application tracker, resume builder, CV
+generator, ATS resume, AI job search assistant, remote jobs, applicant tracking
+system, job board aggregator.
 
 > **Just want to install it?** See **[INSTALL.md](INSTALL.md)** for step-by-step
 > Windows and macOS instructions. Prefer to let an AI do the whole setup? See
