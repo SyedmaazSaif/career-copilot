@@ -41,6 +41,13 @@
         font-size: 12.5px; font-weight: 500; white-space: nowrap;
       }
       .open-ext:hover { filter: brightness(1.05); }
+      .autofill {
+        border: 1px solid #2563eb; background: rgba(37, 99, 235, 0.1); color: #1d4ed8;
+        border-radius: 7px; padding: 0 14px; height: 32px; cursor: pointer;
+        font-size: 12.5px; font-weight: 600; white-space: nowrap;
+      }
+      .autofill:hover { background: rgba(37, 99, 235, 0.18); }
+      .autofill:disabled { opacity: 0.55; cursor: default; }
       .stage { flex: 1; position: relative; }
       webview { position: absolute; inset: 0; border: none; }
       .error {
@@ -59,6 +66,7 @@
       <button class="tbtn" id="forward" title="Forward" disabled>&#9654;</button>
       <button class="tbtn" id="reload" title="Reload">&#8635;</button>
       <span class="addr" id="addr">Loading…</span>
+      <button class="autofill" id="autofill" title="Fill this application form from your profile">⤵ Autofill</button>
       <button class="open-ext" id="openExt">Open in system browser</button>
     </div>
     <div class="stage">
@@ -122,6 +130,95 @@
       document.getElementById("reload").onclick = () => { try { view.reload(); } catch (e) {} };
       document.getElementById("openExt").onclick = openSystem;
       document.getElementById("openExt2").onclick = openSystem;
+
+      // ---- Autofill: fill the application form from YOUR OWN profile ----
+      // Reads the profile the app already stores and drops it into matching
+      // form fields on the current page. It never touches passwords, only fills
+      // empty fields, and you review before submitting. No other browser's data
+      // is read — this is your data, from the app's own database.
+      const autofillBtn = document.getElementById("autofill");
+
+      function flash(btn, msg) {
+        const original = btn.dataset.label || btn.textContent;
+        btn.dataset.label = original;
+        btn.textContent = msg;
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = btn.dataset.label;
+          btn.disabled = false;
+        }, 1800);
+      }
+
+      // Runs inside the target page. Matches inputs by name/id/placeholder/label
+      // and fills the first empty match for each field. Returns how many it filled.
+      function buildFillScript(data) {
+        return "(function(){" +
+          "var d=" + JSON.stringify(data) + ";" +
+          "var pats=[" +
+            "{k:['email'],re:/e-?mail/i,ex:/confirm/i}," +
+            "{k:['phone'],re:/phone|mobile|telephone|^tel$/i}," +
+            "{k:['firstName'],re:/first[ _-]*name|given[ _-]*name|fname/i}," +
+            "{k:['lastName'],re:/last[ _-]*name|surname|family[ _-]*name|lname/i}," +
+            "{k:['fullName'],re:/full[ _-]*name|your[ _-]*name|applicant[ _-]*name|candidate[ _-]*name|^name$|legal[ _-]*name/i,ex:/user|company|file/i}," +
+            "{k:['linkedin'],re:/linked-?in/i}," +
+            "{k:['portfolio'],re:/portfolio|website|personal[ _-]*site|github|^url$/i,ex:/company/i}," +
+            "{k:['city'],re:/^city$|town/i}," +
+            "{k:['country'],re:/country/i}," +
+            "{k:['location'],re:/location|current[ _-]*address|^address$/i,ex:/email|ip|line2/i}," +
+            "{k:['salary'],re:/salary|compensation|expected[ _-]*pay|desired[ _-]*pay/i}," +
+            "{k:['notice'],re:/notice[ _-]*period|availab/i}," +
+            "{k:['workAuth'],re:/authoriz|visa|sponsor|work[ _-]*permit|eligib|right[ _-]*to[ _-]*work/i}" +
+          "];" +
+          "function lbl(el){var t='';try{if(el.id){var l=document.querySelector('label[for=\"'+(window.CSS&&CSS.escape?CSS.escape(el.id):el.id)+'\"]');if(l)t+=' '+l.textContent;}}catch(e){}var p=el.closest&&el.closest('label');if(p)t+=' '+p.textContent;return t;}" +
+          "function sig(el){return [el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('autocomplete'),lbl(el)].filter(Boolean).join(' ').toLowerCase();}" +
+          "function setVal(el,val){try{var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;var s=Object.getOwnPropertyDescriptor(proto,'value').set;s.call(el,val);}catch(e){el.value=val;}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
+          "var skip=['password','hidden','file','checkbox','radio','submit','button','search','range','color','image','reset'];" +
+          "var count=0;" +
+          "function fillDoc(doc){var els=doc.querySelectorAll('input,textarea');Array.prototype.forEach.call(els,function(el){var type=(el.type||'text').toLowerCase();if(skip.indexOf(type)>=0)return;if(el.disabled||el.readOnly)return;if(el.value&&el.value.trim())return;var s=sig(el);if(!s)return;for(var i=0;i<pats.length;i++){var pat=pats[i];if(pat.ex&&pat.ex.test(s))continue;if(pat.re.test(s)){var val='';for(var j=0;j<pat.k.length;j++){if(d[pat.k[j]]){val=d[pat.k[j]];break;}}if(val){setVal(el,val);count++;}break;}}});}" +
+          "fillDoc(document);" +
+          "try{var fr=document.querySelectorAll('iframe');Array.prototype.forEach.call(fr,function(f){try{if(f.contentDocument)fillDoc(f.contentDocument);}catch(e){}});}catch(e){}" +
+          "return count;" +
+        "})();";
+      }
+
+      async function autofill() {
+        let profile;
+        try {
+          const res = await fetch("http://127.0.0.1:8000/api/profile");
+          if (!res.ok) throw new Error("profile " + res.status);
+          profile = await res.json();
+        } catch (e) {
+          flash(autofillBtn, "No profile found");
+          return;
+        }
+        const name = (profile.name || "").trim();
+        const parts = name.split(/\s+/).filter(Boolean);
+        const loc = (profile.location || "").split(",").map((s) => s.trim()).filter(Boolean);
+        const data = {
+          fullName: name,
+          firstName: parts[0] || "",
+          lastName: parts.length > 1 ? parts.slice(1).join(" ") : "",
+          email: profile.email || "",
+          phone: profile.phone || "",
+          linkedin: profile.linkedin || "",
+          portfolio: profile.portfolio || "",
+          location: profile.location || "",
+          city: loc[0] || "",
+          country: loc.length > 1 ? loc[loc.length - 1] : "",
+          salary: profile.salary_expectation_usd || "",
+          notice: profile.notice_period || "",
+          workAuth: profile.work_authorization || "",
+        };
+        let count = 0;
+        try {
+          count = await view.executeJavaScript(buildFillScript(data), true);
+        } catch (e) {
+          flash(autofillBtn, "Can't fill here");
+          return;
+        }
+        flash(autofillBtn, count > 0 ? "Filled " + count + " field" + (count > 1 ? "s" : "") : "No matching fields");
+      }
+      autofillBtn.onclick = autofill;
     </script>
   </body>
 </html>
