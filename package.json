@@ -1,6 +1,6 @@
 {
   "name": "career-copilot",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Free open-source AI job search assistant and job application tracker: scan job boards, score matches to your resume, generate tailored ATS CVs, and track applications in a Kanban pipeline. Private local desktop app.",
   "private": true,
   "main": "electron/main.js",

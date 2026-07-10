@@ -36,6 +36,7 @@ _COLUMN_ADDITIONS = {
     },
     "search_config": {
         "preferred_arrangements": "JSON",
+        "locations": "JSON",
     },
 }
 

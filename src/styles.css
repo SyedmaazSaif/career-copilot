@@ -893,8 +893,12 @@ body.dragging-cursor * {
   margin-bottom: 16px;
 }
 .filter-search {
-  flex: 1;
+  flex: 2;
   min-width: 180px;
+}
+.filter-location {
+  flex: 1;
+  min-width: 130px;
 }
 .filters select {
   width: auto;

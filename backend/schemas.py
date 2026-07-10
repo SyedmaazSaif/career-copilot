@@ -183,6 +183,7 @@ class SearchConfigIn(BaseModel):
     queries: list[str] = []
     enabled_sources: list[str] = []
     preferred_arrangements: list[str] = ["remote", "hybrid", "onsite"]
+    locations: list[str] = []
 
 
 class SearchConfigOut(BaseModel):
@@ -190,6 +191,7 @@ class SearchConfigOut(BaseModel):
     enabled_sources: list[str]
     all_sources: list[str]
     preferred_arrangements: list[str]
+    locations: list[str] = []
 
 
 # ---- Custom sources ----

@@ -181,6 +181,9 @@ class SearchConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     queries: Mapped[list] = mapped_column(JSON, default=list)  # search terms
     enabled_sources: Mapped[list] = mapped_column(JSON, default=list)  # board names
+    # Cities/regions to search in addition to the default global/remote pass.
+    # Empty = search everywhere (the original behavior).
+    locations: Mapped[list] = mapped_column(JSON, default=list)
     # Which work arrangements the user wants; drives scoring + the default filter.
     preferred_arrangements: Mapped[list] = mapped_column(
         JSON, default=lambda: ["remote", "hybrid", "onsite"]
