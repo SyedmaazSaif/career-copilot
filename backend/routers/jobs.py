@@ -52,6 +52,31 @@ def add_by_url(payload: AddJobByUrl, db: Session = Depends(get_db)):
     return created
 
 
+@router.post("/close-stale")
+def close_stale(db: Session = Depends(get_db)):
+    """Move Sourced jobs that were not seen in the latest completed scan to
+    Closed — i.e. postings that have dropped off the boards and are likely no
+    longer accepting applications. Reversible: the user can drag them back."""
+    latest = (
+        db.query(ScrapeRun)
+        .filter(ScrapeRun.status == "done")
+        .order_by(ScrapeRun.id.desc())
+        .first()
+    )
+    if latest is None or latest.started_at is None:
+        return {"closed": 0}
+    cutoff = latest.started_at
+    stale = (
+        db.query(Job)
+        .filter(Job.stage == "Sourced", Job.last_seen_at < cutoff)
+        .all()
+    )
+    for job in stale:
+        job.stage = "Closed"
+    db.commit()
+    return {"closed": len(stale)}
+
+
 @router.get("/runs", response_model=list[ScrapeRunOut])
 def list_runs(db: Session = Depends(get_db), limit: int = 20):
     return (

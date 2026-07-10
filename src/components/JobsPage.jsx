@@ -11,6 +11,11 @@ const SUBVIEWS = [
   { id: "analytics", label: "Analytics" },
 ];
 
+// Auto-refresh the listing when the page opens if the last scan is older than
+// this. Keeps jobs fresh without re-scanning on every rapid re-open (a scan
+// takes a few minutes and hits external boards).
+const AUTO_REFRESH_HOURS = 3;
+
 export default function JobsPage() {
   const [subview, setSubview] = useState("pipeline");
   const [status, setStatus] = useState(null); // {running, run}
@@ -37,9 +42,29 @@ export default function JobsPage() {
     }
   }, []);
 
+  // On open: read scan status, and auto-kick a fresh scan if the last one is
+  // stale. The very first scan stays user-initiated (nothing to refresh yet).
   useEffect(() => {
-    refreshStatus();
-  }, [refreshStatus]);
+    let cancelled = false;
+    (async () => {
+      const st = await api.get("/api/jobs/scan/status").catch(() => null);
+      if (cancelled || !st) return;
+      setStatus(st);
+      wasRunning.current = st.running;
+      const finished =
+        st.run?.status === "done" && st.run?.finished_at
+          ? new Date(st.run.finished_at).getTime()
+          : null;
+      const isStale =
+        finished !== null &&
+        Date.now() - finished > AUTO_REFRESH_HOURS * 3600 * 1000;
+      if (!st.running && isStale) startScan();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // poll while a scan is running
   useEffect(() => {
@@ -171,7 +196,7 @@ export default function JobsPage() {
         {subview === "pipeline" && (
           <Kanban
             key={`k-${dataVersion}`}
-            newSince={!running && run?.status === "done" ? run.started_at : null}
+            scanAt={!running && run?.status === "done" ? run.started_at : null}
             onOpen={setSelectedId}
             onChanged={() => setDataVersion((v) => v + 1)}
           />

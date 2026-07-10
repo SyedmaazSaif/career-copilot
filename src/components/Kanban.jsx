@@ -15,17 +15,24 @@ const STAGE_HINT = {
 };
 const DRAG_THRESHOLD = 5; // px before a press becomes a drag rather than a click
 
-// A job counts as "new" if it was first scanned during the most recent scan.
-function isNew(job, newSince) {
-  if (!newSince || !job.first_scanned_at) return false;
-  return new Date(job.first_scanned_at).getTime() >= new Date(newSince).getTime();
+// `scanAt` is when the most recent completed scan started. A job first seen at
+// or after it is "new"; a Sourced job last seen before it dropped off the boards
+// and is likely no longer accepting applications ("possibly closed").
+function isNew(job, scanAt) {
+  if (!scanAt || !job.first_scanned_at) return false;
+  return new Date(job.first_scanned_at).getTime() >= new Date(scanAt).getTime();
+}
+function isStale(job, scanAt) {
+  if (!scanAt || !job.last_seen_at || job.stage !== "Sourced") return false;
+  return new Date(job.last_seen_at).getTime() < new Date(scanAt).getTime();
 }
 
-export default function Kanban({ onOpen, onChanged, newSince }) {
+export default function Kanban({ onOpen, onChanged, scanAt }) {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState(null);
   const [overStage, setOverStage] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const drag = useRef(null); // { id, fromStage, startX, startY, moved }
 
   async function load() {
@@ -52,6 +59,19 @@ export default function Kanban({ onOpen, onChanged, newSince }) {
     } catch (err) {
       setError(err.message);
       load();
+    }
+  }
+
+  async function clearStale() {
+    setClearing(true);
+    try {
+      await api.post("/api/jobs/close-stale", {});
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -128,6 +148,7 @@ export default function Kanban({ onOpen, onChanged, newSince }) {
         (n, s) => n + byStage[s].length,
         0
       );
+  const staleCount = byStage.Sourced.filter((j) => isStale(j, scanAt)).length;
 
   return (
     <>
@@ -135,6 +156,13 @@ export default function Kanban({ onOpen, onChanged, newSince }) {
         <button className="btn-ghost" onClick={() => setShowAll((v) => !v)}>
           {showAll ? "Focus: Sourced + Applied" : "Show all stages"}
         </button>
+        {staleCount > 0 && (
+          <button className="btn-ghost btn-ghost-warn" onClick={clearStale} disabled={clearing}>
+            {clearing
+              ? "Clearing…"
+              : `Clear ${staleCount} possibly-closed`}
+          </button>
+        )}
         {!showAll && hiddenCount > 0 && (
           <span className="kan-toolbar-note">
             {hiddenCount} job{hiddenCount > 1 ? "s" : ""} in later stages hidden
@@ -153,38 +181,50 @@ export default function Kanban({ onOpen, onChanged, newSince }) {
               <span className="kan-count mono">{byStage[stage].length}</span>
             </div>
             <div className="kan-cards">
-              {byStage[stage].map((job) => (
-                <article
-                  key={job.id}
-                  className={`job-card ${
-                    drag.current?.id === job.id && drag.current?.moved ? "dragging" : ""
-                  }`}
-                  onPointerDown={(e) => onPointerDown(e, job)}
-                >
-                  <div className="job-card-main">
-                    <div className="job-card-text">
-                      <span className="job-card-title">
-                        {stage === "Sourced" && isNew(job, newSince) && (
-                          <span className="new-pill">New</span>
-                        )}
-                        {job.title}
-                      </span>
-                      <span className="job-card-company">
-                        {job.company || job.source}
-                      </span>
+              {byStage[stage].map((job) => {
+                const stale = isStale(job, scanAt);
+                return (
+                  <article
+                    key={job.id}
+                    className={`job-card ${stale ? "stale" : ""} ${
+                      drag.current?.id === job.id && drag.current?.moved ? "dragging" : ""
+                    }`}
+                    onPointerDown={(e) => onPointerDown(e, job)}
+                  >
+                    <div className="job-card-main">
+                      <div className="job-card-text">
+                        <span className="job-card-title">
+                          {stage === "Sourced" && !stale && isNew(job, scanAt) && (
+                            <span className="new-pill">New</span>
+                          )}
+                          {job.title}
+                        </span>
+                        <span className="job-card-company">
+                          {job.company || job.source}
+                        </span>
+                      </div>
+                      <MatchMeter score={job.score} size={46} stroke={5} />
                     </div>
-                    <MatchMeter score={job.score} size={46} stroke={5} />
-                  </div>
-                  <div className="job-card-foot">
-                    <span className="mono job-card-src">{job.source}</span>
-                    {job.red_flags.length > 0 && (
-                      <span className="flag-pill" title={job.red_flags.join(" · ")}>
-                        {job.red_flags.length} flag{job.red_flags.length > 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))}
+                    <div className="job-card-foot">
+                      {stale ? (
+                        <span
+                          className="stale-pill"
+                          title="Not seen in the latest scan — likely no longer accepting applications"
+                        >
+                          Possibly closed
+                        </span>
+                      ) : (
+                        <span className="mono job-card-src">{job.source}</span>
+                      )}
+                      {job.red_flags.length > 0 && (
+                        <span className="flag-pill" title={job.red_flags.join(" · ")}>
+                          {job.red_flags.length} flag{job.red_flags.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         ))}
