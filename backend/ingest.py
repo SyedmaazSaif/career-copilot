@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Job
+from .salary import parse_salary
 from .scoring import extract_requirements, score_job
 
 _COMPANY_SUFFIX = re.compile(
@@ -91,6 +92,8 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
 
         # New job — score and insert
         score, reason, red_flags, work_type, employment_type = score_job(raw, ctx)
+        description = raw.get("description", "") or ""
+        salary = parse_salary(f"{description} {title}")
         job = Job(
             source=raw.get("source", ""),
             title=title,
@@ -106,6 +109,10 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
             score=score,
             score_reason=reason,
             red_flags=red_flags,
+            salary_min=salary["min"] if salary else None,
+            salary_max=salary["max"] if salary else None,
+            salary_text=salary["text"] if salary else "",
+            salary_parsed=True,
             dedupe_key=key,
             stage="Sourced",
             first_scanned_at=now,

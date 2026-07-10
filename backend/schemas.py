@@ -146,6 +146,9 @@ class JobOut(ORMModel):
     score: int
     score_reason: dict
     red_flags: list[str]
+    salary_min: int | None = None
+    salary_max: int | None = None
+    salary_text: str = ""
     stage: str
     sort_order: int
     notes: str
