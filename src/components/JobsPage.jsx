@@ -171,6 +171,7 @@ export default function JobsPage() {
         {subview === "pipeline" && (
           <Kanban
             key={`k-${dataVersion}`}
+            newSince={!running && run?.status === "done" ? run.started_at : null}
             onOpen={setSelectedId}
             onChanged={() => setDataVersion((v) => v + 1)}
           />

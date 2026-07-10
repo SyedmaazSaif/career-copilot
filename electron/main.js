@@ -2,10 +2,62 @@ const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const http = require("http");
+const https = require("https");
 
 const isDev = !app.isPackaged;
 const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+
+// Update check: this app installs by cloning the repo, so the update path is a
+// `git pull`. On launch we read the version in the repo's main branch and, if it
+// is newer than the local one, tell the renderer to show an update banner.
+const REPO = "SyedmaazSaif/career-copilot";
+const REMOTE_PKG_URL = `https://raw.githubusercontent.com/${REPO}/main/package.json`;
+const RELEASES_URL = `https://github.com/${REPO}/releases`;
+
+// Compare dotted numeric versions. Returns 1 if a > b, -1 if a < b, else 0.
+function compareVersions(a, b) {
+  const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
+function checkForUpdates(win) {
+  const current = app.getVersion();
+  const req = https.get(
+    REMOTE_PKG_URL,
+    { headers: { "User-Agent": "career-copilot" } },
+    (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return;
+      }
+      let body = "";
+      res.on("data", (c) => (body += c));
+      res.on("end", () => {
+        try {
+          const latest = JSON.parse(body).version;
+          if (latest && compareVersions(latest, current) > 0 && !win.isDestroyed()) {
+            win.webContents.send("update-available", {
+              current,
+              latest,
+              url: RELEASES_URL,
+            });
+          }
+        } catch {
+          /* malformed response — ignore, this is best-effort */
+        }
+      });
+    }
+  );
+  // Offline or blocked? Silently skip; an update check must never break launch.
+  req.on("error", () => {});
+  req.setTimeout(5000, () => req.destroy());
+}
 
 let backendProcess = null;
 let mainWindow = null;
@@ -33,7 +85,9 @@ function startBackend() {
       "--port",
       String(BACKEND_PORT),
     ],
-    { cwd, stdio: "inherit" }
+    // windowsHide stops Windows from popping a separate console window for the
+    // Python sidecar when the app is launched from the hidden VBS wrapper.
+    { cwd, stdio: "inherit", windowsHide: true }
   );
 
   backendProcess.on("error", (err) => {
@@ -154,7 +208,11 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }
 
-  mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+    // Best-effort update check once the window is up. Never blocks launch.
+    checkForUpdates(mainWindow);
+  });
   mainWindow.on("closed", () => {
     mainWindow = null;
   });

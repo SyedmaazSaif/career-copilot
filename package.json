@@ -1,9 +1,13 @@
 {
   "name": "career-copilot",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Local desktop career command station: jobs, CV packs, and on-device meeting transcription.",
   "private": true,
   "main": "electron/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SyedmaazSaif/career-copilot.git"
+  },
   "scripts": {
     "dev": "concurrently -k -n vite,electron -c green,cyan \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite",
