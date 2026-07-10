@@ -713,6 +713,13 @@ button:focus-visible {
   background: rgba(37, 99, 235, 0.07);
   filter: none;
 }
+.btn-ghost-warn {
+  color: var(--amber);
+  border-color: rgba(232, 163, 61, 0.5);
+}
+.btn-ghost-warn:hover {
+  background: rgba(232, 163, 61, 0.1);
+}
 .kanban {
   display: grid;
   grid-template-columns: repeat(6, minmax(180px, 1fr));
@@ -810,6 +817,25 @@ body.dragging-cursor * {
 .job-card.dragging {
   opacity: 0.5;
   cursor: grabbing;
+}
+.job-card.stale {
+  opacity: 0.62;
+  background: rgba(255, 255, 255, 0.4);
+}
+.job-card.stale:hover {
+  opacity: 1;
+  border-color: var(--amber);
+}
+.stale-pill {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9a6a12;
+  background: rgba(232, 163, 61, 0.15);
+  border: 1px solid rgba(232, 163, 61, 0.4);
+  border-radius: 4px;
+  padding: 1px 6px;
 }
 .job-card-main {
   display: flex;

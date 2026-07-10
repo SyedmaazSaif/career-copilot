@@ -1,6 +1,6 @@
 {
   "name": "career-copilot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local desktop career command station: jobs, CV packs, and on-device meeting transcription.",
   "private": true,
   "main": "electron/main.js",
