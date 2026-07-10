@@ -1,6 +1,6 @@
-# Career Copilot — Free Open-Source AI Job Search Assistant & Application Tracker
+# Career Copilot — Free AI Job Search Assistant & Application Tracker
 
-**Career Copilot is a free, open-source job search app for job seekers.** It runs
+**Career Copilot is a free job search app for job seekers.** It runs
 your whole job hunt from one desktop window: it scans job boards daily, scores
 every role against your resume, generates tailored ATS-friendly CVs, and tracks
 your job applications through a drag-and-drop Kanban pipeline — with a built-in
