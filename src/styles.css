@@ -1517,6 +1517,14 @@ body.dragging-cursor * {
   color: var(--slate-muted);
   margin-top: 2px;
 }
+.ai-status-err {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  color: var(--rose);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .ai-status code {
   background: rgba(102, 114, 132, 0.12);
   padding: 1px 5px;
@@ -1525,6 +1533,117 @@ body.dragging-cursor * {
 }
 .ai-setup-btn {
   margin-top: 10px;
+}
+
+/* Hardware check shown before the model download starts. */
+.hw-check {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+}
+.hw-title {
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.hw-specs {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 12.5px;
+}
+.hw-specs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--line);
+}
+.hw-specs li span:first-child {
+  color: var(--slate-muted);
+}
+.hw-reason {
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+.hw-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.hw-option {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hw-option.picked {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(37, 99, 235, 0.05);
+}
+.hw-option.unfit {
+  opacity: 0.62;
+}
+.hw-option input {
+  margin-top: 3px;
+}
+.hw-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hw-option-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.hw-option-size {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--slate-muted);
+}
+.hw-option-note {
+  font-size: 12px;
+  color: var(--slate-muted);
+}
+.hw-badge {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--petrol);
+}
+.hw-badge.warn {
+  background: rgba(196, 86, 106, 0.14);
+  color: var(--rose);
+}
+.hw-warning {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--rose);
+  background: rgba(196, 86, 106, 0.07);
+  border: 1px solid rgba(196, 86, 106, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.hw-warning.strong {
+  font-weight: 500;
+}
+.hw-actions {
+  display: flex;
+  gap: 8px;
 }
 .ai-setup-note {
   font-size: 11.5px;

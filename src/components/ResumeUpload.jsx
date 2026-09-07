@@ -7,6 +7,7 @@ export default function ResumeUpload({ onApplied }) {
   const [state, setState] = useState("idle"); // idle | parsing | preview | applying
   const [parsed, setParsed] = useState(null);
   const [usedAi, setUsedAi] = useState(false);
+  const [aiNote, setAiNote] = useState(null); // why the AI pass fell short
   const [error, setError] = useState(null);
 
   function pick() {
@@ -24,6 +25,7 @@ export default function ResumeUpload({ onApplied }) {
       const res = await api.upload("/api/ai/resume/parse", file);
       setParsed(res.data);
       setUsedAi(res.used_ai);
+      setAiNote(res.error || null);
       setState("preview");
     } catch (err) {
       setError(err.message);
@@ -90,7 +92,12 @@ export default function ResumeUpload({ onApplied }) {
               <div className="ai-status-sub">
                 {usedAi
                   ? "Read with local AI — experience and skills included below."
-                  : "Read without AI, so only your contact details and summary were filled. Turn on Ollama (see Settings) for full parsing, or add the rest by hand."}
+                  : "Read without AI, so only your contact details and summary were filled. Add the rest by hand, or fix the problem below and upload again."}
+                {aiNote && (
+                  <div className="ai-status-err">
+                    Local model: {aiNote}
+                  </div>
+                )}
               </div>
             </div>
 

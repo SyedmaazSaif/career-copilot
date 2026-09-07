@@ -80,7 +80,9 @@ def _reword(text: str, job, use_ai: bool) -> str:
         "Return only the rewritten bullet."
     )
     prompt = f"Job title: {job.title}\n\nBullet: {text}\n\nRewritten bullet:"
-    out = ollama_client.generate(prompt, system=system, temperature=0.3, timeout=60)
+    out, _err = ollama_client.generate(
+        prompt, system=system, temperature=0.3, timeout=90
+    )
     if not out:
         return text
     out = out.strip().strip('"').split("\n")[0]
@@ -257,7 +259,7 @@ def build_docx(cv_data: dict, path: Path) -> None:
 def generate_cv(db: Session, job, answers: dict) -> dict:
     """Full pipeline: gather -> select+reword -> docx -> verify. Returns a dict
     with file path, filename, used_ai, and verification flags."""
-    use_ai = ollama_client.available()[0]
+    use_ai = ollama_client.preflight() is None
     data = gather_profile(db)
     cv_data = build_cv_data(data, job, answers, use_ai)
     flags = verify_cv(cv_data, data)
