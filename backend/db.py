@@ -37,10 +37,12 @@ _COLUMN_ADDITIONS = {
         "salary_max": "INTEGER",
         "salary_text": "VARCHAR DEFAULT ''",
         "salary_parsed": "BOOLEAN DEFAULT 0",
+        "company_url": "VARCHAR",
     },
     "search_config": {
         "preferred_arrangements": "JSON",
         "locations": "JSON",
+        "known_sources": "JSON",
     },
 }
 
@@ -127,21 +129,35 @@ def init_db() -> None:
     # Ensure the singleton profile row (id=1) always exists so the UI has a
     # record to edit from the very first launch.
     from .models import Profile, SearchConfig
+    from .scrapers import ALL_SOURCES, DEFAULT_QUERIES, LEGACY_SOURCES
 
     with SessionLocal() as session:
         if session.get(Profile, 1) is None:
             session.add(Profile(id=1))
-        if session.get(SearchConfig, 1) is None:
+        config = session.get(SearchConfig, 1)
+        if config is None:
             # Seed with the scraper defaults so a fresh install scans sensibly.
-            from .scrapers import ALL_SOURCES, DEFAULT_QUERIES
-
             session.add(
                 SearchConfig(
                     id=1,
                     queries=list(DEFAULT_QUERIES),
                     enabled_sources=list(ALL_SOURCES),
+                    known_sources=list(ALL_SOURCES),
                 )
             )
+        else:
+            # A board added by an app upgrade is switched on once, the first time
+            # this config sees it. Boards the user switched off are already in
+            # known_sources, so they stay off. A config written before this
+            # column existed has been offered exactly the legacy boards.
+            known = set(config.known_sources or LEGACY_SOURCES)
+            fresh = [s for s in ALL_SOURCES if s not in known]
+            if fresh or not config.known_sources:
+                enabled = list(config.enabled_sources or [])
+                config.enabled_sources = enabled + [
+                    s for s in fresh if s not in enabled
+                ]
+                config.known_sources = sorted(known | set(ALL_SOURCES))
         session.commit()
 
 

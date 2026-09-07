@@ -21,6 +21,7 @@ export default function JobsPage() {
   const [status, setStatus] = useState(null); // {running, run}
   const [dataVersion, setDataVersion] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
+  const [tableNewOnly, setTableNewOnly] = useState(false);
   const [showAddUrl, setShowAddUrl] = useState(false);
   const [addUrl, setAddUrl] = useState("");
   const [addingUrl, setAddingUrl] = useState(false);
@@ -172,8 +173,21 @@ export default function JobsPage() {
       )}
       {!running && run?.status === "done" && (
         <div className="banner">
-          Last scan found {run.total_found} listings, {run.total_new} new. Runs daily
-          and whenever you hit Scan now.
+          Last scan found {run.total_found} listings,{" "}
+          {run.total_new > 0 ? (
+            <button
+              className="link-inline"
+              onClick={() => {
+                setTableNewOnly(true);
+                setSubview("table");
+              }}
+            >
+              {run.total_new} new
+            </button>
+          ) : (
+            <>{run.total_new} new</>
+          )}
+          . Runs daily and whenever you hit Scan now.
         </div>
       )}
       {!running && run?.status === "error" && (
@@ -202,7 +216,12 @@ export default function JobsPage() {
           />
         )}
         {subview === "table" && (
-          <JobsTable key={`t-${dataVersion}`} onOpen={setSelectedId} />
+          <JobsTable
+            key={`t-${dataVersion}`}
+            onOpen={setSelectedId}
+            newOnly={tableNewOnly}
+            onNewOnlyChange={setTableNewOnly}
+          />
         )}
         {subview === "analytics" && <Analytics key={`a-${dataVersion}`} />}
       </div>

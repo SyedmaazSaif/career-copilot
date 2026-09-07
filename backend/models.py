@@ -143,6 +143,10 @@ class Job(Base):
     company: Mapped[str] = mapped_column(String, default="")
     location: Mapped[str] = mapped_column(String, default="")
     url: Mapped[str] = mapped_column(String, default="", index=True)
+    # The company's own careers page, when known. Job boards often paywall or
+    # gate the listing, so this is the link the user actually applies through.
+    # Resolved best-effort by /api/jobs/{id}/find-company-site, or pasted by hand.
+    company_url: Mapped[str | None] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
     requirements: Mapped[list] = mapped_column(JSON, default=list)  # extracted lines
     posted: Mapped[str] = mapped_column(String, default="")
@@ -179,6 +183,26 @@ class Job(Base):
     first_reply_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class DismissedJob(Base):
+    """A job the user removed as "not qualified / not interested".
+
+    Deleting the Job row alone is not enough: the next scan would re-ingest the
+    same posting as new, because ingest dedupes only against rows still in the
+    table. This blocklist is checked before insert, so a removed job stays gone
+    until the user undoes it from Settings."""
+
+    __tablename__ = "dismissed_job"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dedupe_key: Mapped[str] = mapped_column(String, default="", index=True)
+    url: Mapped[str] = mapped_column(String, default="", index=True)
+    # Kept only so Settings can show what was removed.
+    title: Mapped[str] = mapped_column(String, default="")
+    company: Mapped[str] = mapped_column(String, default="")
+    source: Mapped[str] = mapped_column(String, default="")
+    dismissed_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class SearchConfig(Base):
     """Singleton (id=1). What the scanner searches for and which boards it uses.
     Editable from the Settings screen so the user controls their own search."""
@@ -188,6 +212,10 @@ class SearchConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     queries: Mapped[list] = mapped_column(JSON, default=list)  # search terms
     enabled_sources: Mapped[list] = mapped_column(JSON, default=list)  # board names
+    # Every board this config has been offered. A board the app ships later is
+    # switched on once, on first sight; a board the user switched off stays off,
+    # because it is already known.
+    known_sources: Mapped[list] = mapped_column(JSON, default=list)
     # Cities/regions to search in addition to the default global/remote pass.
     # Empty = search everywhere (the original behavior).
     locations: Mapped[list] = mapped_column(JSON, default=list)

@@ -15,7 +15,7 @@ from difflib import SequenceMatcher
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Job
+from .models import DismissedJob, Job
 from .salary import parse_salary
 from .scoring import extract_requirements, score_job
 from .textutil import clean_description
@@ -37,6 +37,12 @@ def _norm(s: str) -> str:
 
 def dedupe_key(title: str, company: str) -> str:
     return f"{_norm(title)}::{_norm(company)}"
+
+
+def norm_url(url: str) -> str:
+    """Loose URL identity: ignores case and a trailing slash. Used to match a
+    scraped posting against the dismissed blocklist."""
+    return (url or "").strip().rstrip("/").lower()
 
 
 def _split_company(title: str, company: str) -> tuple[str, str]:
@@ -63,6 +69,13 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
     key_list = list(keys.keys())
     now = datetime.utcnow()
 
+    # Jobs the user removed. Their rows are gone, so without this they would be
+    # re-ingested as brand new on the next scan.
+    dismissed = db.scalars(select(DismissedJob)).all()
+    dismissed_urls = {norm_url(d.url) for d in dismissed if d.url}
+    dismissed_keys = {d.dedupe_key for d in dismissed if d.dedupe_key}
+    dismissed_key_list = list(dismissed_keys)
+
     new_count = 0
     for raw in scraped:
         url = (raw.get("url") or "").strip()
@@ -73,6 +86,15 @@ def ingest_jobs(db: Session, scraped: list[dict], ctx: dict) -> tuple[int, int]:
         title, company = _split_company(title, company)
 
         key = dedupe_key(title, company)
+
+        # 0: the user removed this posting — never bring it back
+        if norm_url(url) in dismissed_urls or key in dismissed_keys:
+            continue
+        if any(
+            SequenceMatcher(None, key, k).ratio() >= FUZZY_THRESHOLD
+            for k in dismissed_key_list
+        ):
+            continue
 
         # 1 + 2: exact URL or exact key already known
         match = None

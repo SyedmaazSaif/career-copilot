@@ -137,6 +137,7 @@ class JobOut(ORMModel):
     company: str
     location: str
     url: str
+    company_url: str | None = None
     description: str
     requirements: list[str]
     posted: str
@@ -156,12 +157,33 @@ class JobOut(ORMModel):
     last_seen_at: datetime | None = None
     applied_at: datetime | None = None
     first_reply_at: datetime | None = None
+    # True when the job was first seen by the most recent completed scan. Set by
+    # the router (it needs the run history), not stored on the row.
+    is_new: bool = False
 
 
 class JobPatch(BaseModel):
     stage: str | None = None
     sort_order: int | None = None
     notes: str | None = None
+    company_url: str | None = None
+
+
+class CompanySiteOut(BaseModel):
+    """Result of a best-effort company careers-page lookup. company_url is null
+    when nothing convincing was found — that is a normal outcome, not an error."""
+
+    company_url: str | None = None
+
+
+class DismissedJobOut(ORMModel):
+    id: int
+    dedupe_key: str
+    url: str
+    title: str
+    company: str
+    source: str
+    dismissed_at: datetime | None = None
 
 
 class ScrapeRunOut(ORMModel):

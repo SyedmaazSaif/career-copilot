@@ -1756,3 +1756,118 @@ body.dragging-cursor * {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Application links (job detail) ---- */
+.link-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.link-row-actions {
+  gap: 12px;
+}
+.link-row-label {
+  flex: none;
+  width: 96px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--slate-muted);
+}
+.link-row-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  user-select: all; /* one click selects the whole URL */
+}
+.link-row-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.btn-sm {
+  flex: none;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* ---- Destructive actions ---- */
+.btn-danger {
+  color: var(--rose);
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  font-size: 14px;
+}
+.btn-danger:hover {
+  border-color: var(--rose);
+  background: rgba(196, 86, 106, 0.06);
+  filter: none;
+}
+/* Remove buttons sit quiet until the row or card is hovered. */
+.row-remove,
+.card-remove {
+  background: none;
+  border: none;
+  color: var(--slate-muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  opacity: 0;
+}
+.jobs-table tr:hover .row-remove,
+.job-card:hover .card-remove,
+.row-remove:focus-visible,
+.card-remove:focus-visible {
+  opacity: 1;
+}
+.row-remove:hover,
+.card-remove:hover {
+  color: var(--rose);
+  background: rgba(196, 86, 106, 0.08);
+  filter: none;
+}
+.col-remove {
+  width: 34px;
+  text-align: right;
+}
+.job-card {
+  position: relative;
+}
+.card-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+}
+
+/* A link that lives inside a sentence (e.g. "12 new" in the scan banner). */
+.link-inline {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--petrol);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-inline:hover {
+  filter: none;
+  text-decoration: none;
+}
