@@ -7,9 +7,14 @@ a paid API.
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from .. import ollama_client, ollama_setup, resume as resume_mod
+from .. import hardware, ollama_client, ollama_setup, resume as resume_mod
 from ..db import get_db
-from ..schemas import ImportResult, ResumeApplyRequest, ResumeParseResult
+from ..schemas import (
+    ImportResult,
+    OllamaSetupRequest,
+    ResumeApplyRequest,
+    ResumeParseResult,
+)
 from .importer import apply_profile_data
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -23,10 +28,19 @@ def ai_status():
     return ollama_client.status()
 
 
+@router.get("/hardware")
+def hardware_check():
+    """This machine's specs and the largest local model it can actually run.
+    The UI shows this before installing anything, so the choice is informed
+    rather than a 4 GB download that turns out to be unusable."""
+    return hardware.recommend()
+
+
 @router.post("/ollama/setup")
-def start_ollama_setup():
-    """One-click: install Ollama (Windows), download the model, and turn it on."""
-    return ollama_setup.start_setup()
+def start_ollama_setup(payload: OllamaSetupRequest | None = None):
+    """One-click: install Ollama (Windows), download the model, and turn it on.
+    Defaults to the hardware-recommended model; `model` overrides it."""
+    return ollama_setup.start_setup(payload.model if payload else None)
 
 
 @router.get("/ollama/setup/status")
@@ -47,8 +61,8 @@ async def parse_resume(file: UploadFile = File(...)):
         raise HTTPException(
             422, "couldn't read any text from that file (is it a scanned image?)"
         )
-    data, used_ai = resume_mod.parse_resume(text)
-    return ResumeParseResult(data=data, used_ai=used_ai)
+    data, used_ai, error = resume_mod.parse_resume(text)
+    return ResumeParseResult(data=data, used_ai=used_ai, error=error)
 
 
 @router.post("/resume/apply", response_model=ImportResult)

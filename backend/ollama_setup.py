@@ -20,7 +20,7 @@ from pathlib import Path
 
 import requests
 
-from . import ollama_client
+from . import hardware, ollama_client
 
 OLLAMA_WIN_INSTALLER = "https://ollama.com/download/OllamaSetup.exe"
 DOWNLOAD_PAGE = "https://ollama.com/download"
@@ -28,11 +28,15 @@ ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 _lock = threading.Lock()
 _thread: threading.Thread | None = None
+# The model this run is installing. Set when setup starts so the pull, the
+# "already downloaded" check and the .env write all agree on one name.
+_chosen_model: str = ""
 
 # Shared, pollable status.
 _status: dict = {
     "state": "idle",  # idle | running | done | error | manual
     "message": "",
+    "model": "",  # the model this run is installing
     "steps": [],  # [{key,label,status,detail}]
 }
 
@@ -69,14 +73,20 @@ def _set(key: str, status_: str, detail: str = ""):
             break
 
 
-def start_setup() -> dict:
-    global _thread
+def start_setup(model: str | None = None) -> dict:
+    """Install Ollama and download `model`. With no model given, the one this
+    machine can actually run, so we never install something that will page to
+    disk and time out on every request."""
+    global _thread, _chosen_model
     with _lock:
         if is_running():
             return _status
+        chosen = (model or "").strip() or hardware.recommend()["recommended"]["name"]
+        _chosen_model = chosen
         _reset_steps()
         _status["state"] = "running"
         _status["message"] = ""
+        _status["model"] = chosen
         _thread = threading.Thread(target=_run, daemon=True)
         _thread.start()
     return _status
@@ -84,18 +94,20 @@ def start_setup() -> dict:
 
 def _reachable() -> bool:
     try:
-        r = requests.get(f"{ollama_client.HOST}/api/tags", timeout=3)
+        r = requests.get(f"{ollama_client.host()}/api/tags", timeout=3)
         return r.status_code == 200
     except Exception:
         return False
 
 
 def _model_present() -> bool:
+    want = _chosen_model or ollama_client.model()
     try:
-        r = requests.get(f"{ollama_client.HOST}/api/tags", timeout=3)
+        r = requests.get(f"{ollama_client.host()}/api/tags", timeout=3)
         names = [m.get("name", "") for m in r.json().get("models", [])]
-        base = ollama_client.MODEL.split(":")[0]
-        return any(n.split(":")[0] == base for n in names)
+        if ":" in want:
+            return want in names
+        return any(n.split(":")[0] == want for n in names)
     except Exception:
         return False
 
@@ -169,9 +181,9 @@ def _download_installer() -> Path:
 
 
 def _pull_model():
-    model = ollama_client.MODEL
+    model = _chosen_model or ollama_client.model()
     with requests.post(
-        f"{ollama_client.HOST}/api/pull",
+        f"{ollama_client.host()}/api/pull",
         json={"name": model, "stream": True},
         stream=True,
         timeout=None,
@@ -199,18 +211,28 @@ def _pull_model():
 
 
 def _enable_in_env():
+    """Turn the local AI on and pin the model we just installed. Writing the
+    model matters: without it the app would keep using whatever OLLAMA_MODEL
+    said before, which is how it ends up pointing at a model that is not there
+    or does not fit."""
+    values = {
+        "OLLAMA_ENABLED": "true",
+        "OLLAMA_MODEL": _chosen_model or ollama_client.model(),
+    }
     # Update the running process immediately…
-    os.environ["OLLAMA_ENABLED"] = "true"
+    os.environ.update(values)
     # …and persist to .env so it survives a restart.
     lines = []
-    found = False
+    seen = set()
     if ENV_PATH.exists():
         for ln in ENV_PATH.read_text(encoding="utf-8").splitlines():
-            if ln.strip().startswith("OLLAMA_ENABLED"):
-                lines.append("OLLAMA_ENABLED=true")
-                found = True
+            key = ln.split("=", 1)[0].strip()
+            if key in values:
+                lines.append(f"{key}={values[key]}")
+                seen.add(key)
             else:
                 lines.append(ln)
-    if not found:
-        lines.append("OLLAMA_ENABLED=true")
+    for key, value in values.items():
+        if key not in seen:
+            lines.append(f"{key}={value}")
     ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")

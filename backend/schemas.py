@@ -259,6 +259,14 @@ class CVPackOut(ORMModel):
 class ResumeParseResult(BaseModel):
     data: dict
     used_ai: bool
+    # Why the AI pass was skipped or fell short, so the UI can say so
+    # instead of blaming a switched-off Ollama.
+    error: str | None = None
+
+
+class OllamaSetupRequest(BaseModel):
+    """Which model to install. Empty means "whatever this machine can run"."""
+    model: str | None = None
 
 
 class ResumeApplyRequest(BaseModel):

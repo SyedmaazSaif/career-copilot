@@ -24,15 +24,28 @@ system, job board aggregator.
 ## What it does
 
 **Jobs**
-- Scans 9 free job boards (Remotive, We Work Remotely, Himalayas, RemoteOK,
-  Arbeitnow, LinkedIn, Hiring.cafe, Wellfound, Remote.co) on demand and daily.
+- Scans 10 free job boards (Remotive, We Work Remotely, Himalayas, RemoteOK,
+  Arbeitnow, LinkedIn, Hiring.cafe, Wellfound, Remote.co, Mustakbil) on demand
+  and daily.
 - Add your own sources too: any RSS feed, a Greenhouse or Lever company board, or
   a single job by pasting its URL.
+- **Real location search.** Boards that filter by location natively (LinkedIn,
+  and Mustakbil for Pakistan) are searched once per location you configure, on
+  top of the default global pass — so on-site roles in Islamabad, Karachi,
+  Lahore or anywhere else actually show up. The remote-only boards are searched
+  globally, which also makes scans considerably faster.
 - Scores every job 0–100 against your profile — skills, seniority, work
   arrangement, visa-friendliness, and domain overlap — shown as a small "match
-  meter" gauge. Each score explains itself.
+  meter" gauge. Each score explains itself. A role where you already live is not
+  penalised for "requires being based in…".
 - Classifies each job as remote / hybrid / on-site and full-time / contract, with
   filters for both. Not remote-only.
+- **See what's new.** Every job first found by the latest scan is badged "NEW" on
+  the board and in the table. The post-scan banner's "N new" is a link straight
+  to them, and the table can filter to new-only or sort by newest first.
+- **Remove jobs you don't qualify for**, from the table, a card, or the job
+  window. Removed jobs are blocklisted, so the next scan cannot resurrect them —
+  and Settings lists them with an Undo if you change your mind.
 - De-duplicates the same role posted to several boards, and flags red flags.
 - A Kanban pipeline (Sourced → Applied → Screening → Interview → Offer → Closed)
   with draggable cards, a filterable jobs table, and an analytics tab.
@@ -47,6 +60,12 @@ system, job board aggregator.
 - Click "Open listing to apply" and the job opens in a browser window built into
   the app, with back / forward / reload and an "open in your normal browser"
   button. You apply yourself; the app never submits anything for you.
+- Every job shows its **application links** as plain, selectable text you can
+  copy, or open in your real browser (handy when a board paywalls the listing but
+  you are signed in elsewhere). "Find company site" looks up the employer's own
+  careers page — following the listing's redirects to its ATS (Greenhouse, Lever,
+  Workable, Ashby, BambooHR, SmartRecruiters), or searching for it — and you can
+  paste or correct the link yourself whenever the guess is off.
 
 **Your profile, your rules**
 - A built-in editor for your experience, skills, education, certifications, and
@@ -55,19 +74,26 @@ system, job board aggregator.
   uses facts you entered — it never invents anything.
 
 **Settings**
-- Edit which job titles/keywords to search, which boards are on, your preferred
-  work arrangements, and add your own job sources.
+- Edit which job titles/keywords to search, which locations to search in, which
+  boards are on, your preferred work arrangements, and add your own job sources.
+- Review the jobs you removed, and undo any of them.
 
 ## Optional free local AI (Ollama)
 
 Resume parsing and CV wording are smarter with a local AI model, and it stays
 free and private. The easiest way to turn it on: open **Settings** in the app and
 click **"Set up local AI"** — it installs Ollama, downloads the model, and enables
-it, showing each step (a one-time ~4 GB download; automatic install is
+it, showing each step (a one-time ~1.3 GB download; automatic install is
 Windows-only).
 
 Prefer to do it yourself? Install Ollama (<https://ollama.com>), run
-`ollama pull llama3.1`, and set `OLLAMA_ENABLED=true` in `.env`.
+`ollama pull llama3.2:1b`, and set `OLLAMA_ENABLED=true` in `.env`.
+
+The default model is deliberately small so it runs on a laptop with 8 GB of RAM
+and no dedicated GPU. A bigger model (`llama3.1`, say) reads a resume more
+accurately, but only pick one that fits in the RAM you have free — once Ollama
+has to page the model to disk it slows by a factor of ~100 and every request
+times out. Set `OLLAMA_MODEL` in `.env` to change it.
 
 The app works fully without this — it just falls back to a simpler built-in
 method. No paid API is ever called either way.

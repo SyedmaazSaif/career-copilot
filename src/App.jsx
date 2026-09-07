@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api.js";
+import { checkForUpdate } from "./updateCheck.js";
 import ProfilePage from "./components/ProfilePage.jsx";
 import JobsPage from "./components/JobsPage.jsx";
 import SettingsPage from "./components/SettingsPage.jsx";
@@ -26,10 +27,18 @@ export default function App() {
     };
   }, []);
 
-  // Listen for the main process's update check (Electron only).
+  // Inside Electron the main process runs the check and pushes the result.
+  // Outside it (npm run web, or a browser tab) nothing would, so run the same
+  // check here -- otherwise those users never learn an update exists.
   useEffect(() => {
-    const unsub = window.copilot?.onUpdateAvailable?.((info) => setUpdate(info));
-    return unsub;
+    if (window.copilot?.onUpdateAvailable) {
+      return window.copilot.onUpdateAvailable((info) => setUpdate(info));
+    }
+    let alive = true;
+    checkForUpdate().then((info) => alive && info && setUpdate(info));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   return (
@@ -69,7 +78,11 @@ export default function App() {
             <span className="update-banner-actions">
               <button
                 className="link-btn"
-                onClick={() => window.copilot?.openExternal?.(update.url)}
+                onClick={() =>
+                  window.copilot?.openExternal
+                    ? window.copilot.openExternal(update.url)
+                    : window.open(update.url, "_blank", "noopener")
+                }
               >
                 View release
               </button>
