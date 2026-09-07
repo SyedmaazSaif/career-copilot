@@ -82,9 +82,10 @@ system, job board aggregator.
 
 Resume parsing and CV wording are smarter with a local AI model, and it stays
 free and private. The easiest way to turn it on: open **Settings** in the app and
-click **"Set up local AI"** — it installs Ollama, downloads the model, and enables
-it, showing each step (a one-time ~1.3 GB download; automatic install is
-Windows-only).
+click **"Set up local AI"** — it reads your computer's memory and graphics, tells
+you which model it can actually run and what a larger one would do, and only then
+installs Ollama and downloads that model, showing each step. You do this once
+(automatic install is Windows-only).
 
 Prefer to do it yourself? Install Ollama (<https://ollama.com>), run
 `ollama pull llama3.2:1b`, and set `OLLAMA_ENABLED=true` in `.env`.
