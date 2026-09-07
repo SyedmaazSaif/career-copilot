@@ -15,10 +15,14 @@ const STAGE_HINT = {
 };
 const DRAG_THRESHOLD = 5; // px before a press becomes a drag rather than a click
 
-// `scanAt` is when the most recent completed scan started. A job first seen at
-// or after it is "new"; a Sourced job last seen before it dropped off the boards
-// and is likely no longer accepting applications ("possibly closed").
+// `scanAt` is when the most recent completed scan started. A Sourced job last
+// seen before it dropped off the boards is likely no longer accepting
+// applications ("possibly closed").
+// "New" comes from the backend (job.is_new, same rule against the latest
+// completed run); scanAt is the fallback when the board is rendered from a
+// payload that predates that field.
 function isNew(job, scanAt) {
+  if (job.is_new !== undefined) return job.is_new;
   if (!scanAt || !job.first_scanned_at) return false;
   return new Date(job.first_scanned_at).getTime() >= new Date(scanAt).getTime();
 }
@@ -65,6 +69,21 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
     );
     try {
       await api.patch(`/api/jobs/${jobId}`, { stage });
+      onChanged?.();
+    } catch (err) {
+      setError(err.message);
+      load();
+    }
+  }
+
+  async function remove(e, job) {
+    e.stopPropagation();
+    const label = [job.title, job.company].filter(Boolean).join(" at ");
+    if (!window.confirm(`Remove "${label}"? It won't come back in future scans.`))
+      return;
+    setJobs((prev) => (prev ? prev.filter((j) => j.id !== job.id) : prev));
+    try {
+      await api.post(`/api/jobs/${job.id}/dismiss`, {});
       onChanged?.();
     } catch (err) {
       setError(err.message);
@@ -201,6 +220,19 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
                     }`}
                     onPointerDown={(e) => onPointerDown(e, job)}
                   >
+                    {stage === "Sourced" && (
+                      // stopPropagation on pointerdown too: the card treats a
+                      // press as the start of a drag (and a click as "open").
+                      <button
+                        className="card-remove"
+                        title="Remove this job — it won't come back in future scans"
+                        aria-label={`Remove ${job.title}`}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => remove(e, job)}
+                      >
+                        ✕
+                      </button>
+                    )}
                     <div className="job-card-main">
                       <div className="job-card-text">
                         <span className="job-card-title">

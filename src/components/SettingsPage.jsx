@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import CustomSources from "./CustomSources.jsx";
+import DismissedJobs from "./DismissedJobs.jsx";
 import AiStatus from "./AiStatus.jsx";
 
 const SOURCE_LABELS = {
@@ -13,6 +14,7 @@ const SOURCE_LABELS = {
   linkedin: "LinkedIn",
   hiringcafe: "Hiring.cafe",
   wellfound: "Wellfound",
+  mustakbil: "Mustakbil (Pakistan)",
 };
 
 const ARRANGEMENTS = [
@@ -170,9 +172,10 @@ export default function SettingsPage() {
           </span>
         </div>
         <p className="empty-hint" style={{ marginTop: 0 }}>
-          Add a city or country to also search there — each search term runs a
-          location-specific pass (e.g. "product manager Dubai") on top of the default
-          global/remote search. Leave empty to search everywhere.
+          Add a city or country to also search there. Boards that filter by location
+          (LinkedIn, and Mustakbil for Pakistan) get a pass per location on top of the
+          default global search; the remote-only boards carry no on-site roles, so they
+          are searched globally either way. Leave empty to search everywhere.
         </p>
         <div className="term-add">
           <input
@@ -255,6 +258,8 @@ export default function SettingsPage() {
       </div>
 
       <CustomSources />
+
+      <DismissedJobs />
     </div>
   );
 }

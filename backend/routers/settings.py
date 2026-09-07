@@ -23,6 +23,7 @@ def _get_or_seed(db: Session) -> SearchConfig:
             id=1,
             queries=list(DEFAULT_QUERIES),
             enabled_sources=list(ALL_SOURCES),
+            known_sources=list(ALL_SOURCES),
         )
         db.add(config)
         db.commit()

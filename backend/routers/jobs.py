@@ -8,17 +8,48 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import scan_manager
+from ..company_site import find_company_site
 from ..custom_scrapers import fetch_single_job
 from ..db import get_db
-from ..ingest import ingest_jobs
-from ..models import STAGES, Job, ScrapeRun
-from ..schemas import AddJobByUrl, JobOut, JobPatch, ScanStatus, ScrapeRunOut
+from ..ingest import dedupe_key, ingest_jobs
+from ..models import STAGES, DismissedJob, Job, ScrapeRun
+from ..schemas import (
+    AddJobByUrl,
+    CompanySiteOut,
+    DismissedJobOut,
+    JobOut,
+    JobPatch,
+    ScanStatus,
+    ScrapeRunOut,
+)
 from ..scoring import build_profile_context
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 # Stages that count as "the application got a response".
 _RESPONDED = {"Screening", "Interview", "Offer"}
+
+
+def _latest_scan_start(db: Session) -> datetime | None:
+    """When the most recent completed scan started. Jobs first seen at or after
+    it are 'new this scan'."""
+    latest = (
+        db.query(ScrapeRun)
+        .filter(ScrapeRun.status == "done")
+        .order_by(ScrapeRun.id.desc())
+        .first()
+    )
+    return latest.started_at if latest else None
+
+
+def _mark_new(jobs: list[Job], cutoff: datetime | None) -> list[Job]:
+    """Stamp the transient is_new flag JobOut serialises. Not a stored column —
+    it depends on the run history, not the row."""
+    for job in jobs:
+        job.is_new = bool(
+            cutoff and job.first_scanned_at and job.first_scanned_at >= cutoff
+        )
+    return jobs
 
 
 @router.post("/scan", response_model=ScanStatus)
@@ -48,8 +79,12 @@ def add_by_url(payload: AddJobByUrl, db: Session = Depends(get_db)):
     ingest_jobs(db, [job_dict], ctx)  # scores, classifies, dedupes, inserts
     created = db.query(Job).filter(Job.url == url).order_by(Job.id.desc()).first()
     if created is None:
-        raise HTTPException(500, "job was fetched but could not be saved")
-    return created
+        raise HTTPException(
+            422,
+            "that job was already in your list, or you removed it earlier — "
+            "undo it from Settings to add it again",
+        )
+    return _mark_new([created], _latest_scan_start(db))[0]
 
 
 @router.post("/close-stale")
@@ -138,6 +173,25 @@ def analytics(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/dismissed", response_model=list[DismissedJobOut])
+def list_dismissed(db: Session = Depends(get_db)):
+    """Jobs the user removed. Scans skip these until they are undone."""
+    return (
+        db.query(DismissedJob).order_by(DismissedJob.dismissed_at.desc()).all()
+    )
+
+
+@router.delete("/dismissed/{dismissed_id}", status_code=204)
+def undismiss(dismissed_id: int, db: Session = Depends(get_db)):
+    """Take a job off the blocklist so a future scan can pick it up again. The
+    job itself is not restored — it comes back the next time a board lists it."""
+    entry = db.get(DismissedJob, dismissed_id)
+    if entry is None:
+        raise HTTPException(404, "not found")
+    db.delete(entry)
+    db.commit()
+
+
 @router.get("", response_model=list[JobOut])
 def list_jobs(
     db: Session = Depends(get_db),
@@ -146,6 +200,7 @@ def list_jobs(
     min_score: int = 0,
     red_flags: str | None = Query(None, description="'true' = only jobs with red flags"),
     search: str | None = None,
+    new_only: bool = False,
     limit: int = 500,
 ):
     q = select(Job)
@@ -158,7 +213,14 @@ def list_jobs(
     q = q.order_by(Job.stage, Job.sort_order, Job.score.desc())
     jobs = db.scalars(q).all()
 
+    cutoff = _latest_scan_start(db)
+    _mark_new(jobs, cutoff)
+
     # filters that are simpler in Python
+    if new_only:
+        # No completed scan yet means nothing can be new — return nothing rather
+        # than silently ignoring the filter.
+        jobs = [j for j in jobs if j.is_new] if cutoff else []
     if red_flags == "true":
         jobs = [j for j in jobs if j.red_flags]
     if search:
@@ -175,7 +237,22 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(404, "job not found")
-    return job
+    return _mark_new([job], _latest_scan_start(db))[0]
+
+
+@router.post("/{job_id}/find-company-site", response_model=CompanySiteOut)
+def find_company_site_for_job(job_id: int, db: Session = Depends(get_db)):
+    """Best-effort: resolve the company's own careers/application page and save
+    it. Returns null when nothing convincing turns up — that is not an error, the
+    user can paste the right link by hand."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "job not found")
+    url = find_company_site(job.url or "", job.company or "")
+    if url:
+        job.company_url = url
+        db.commit()
+    return CompanySiteOut(company_url=url)
 
 
 @router.patch("/{job_id}", response_model=JobOut)
@@ -192,19 +269,47 @@ def patch_job(job_id: int, payload: JobPatch, db: Session = Depends(get_db)):
         job.sort_order = payload.sort_order
     if payload.notes is not None:
         job.notes = payload.notes
+    if payload.company_url is not None:
+        job.company_url = payload.company_url.strip() or None
 
     db.commit()
     db.refresh(job)
-    return job
+    return _mark_new([job], _latest_scan_start(db))[0]
+
+
+def _dismiss(job: Job, db: Session) -> None:
+    """Blocklist the posting, then delete it. Order matters: without the
+    blocklist entry the next scan would re-ingest it as a brand new job."""
+    db.add(
+        DismissedJob(
+            dedupe_key=job.dedupe_key or dedupe_key(job.title, job.company),
+            url=job.url or "",
+            title=job.title or "",
+            company=job.company or "",
+            source=job.source or "",
+        )
+    )
+    db.delete(job)
+    db.commit()
+
+
+@router.post("/{job_id}/dismiss", status_code=204)
+def dismiss_job(job_id: int, db: Session = Depends(get_db)):
+    """Remove a job you do not qualify for, and keep it from coming back."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "job not found")
+    _dismiss(job, db)
 
 
 @router.delete("/{job_id}", status_code=204)
 def delete_job(job_id: int, db: Session = Depends(get_db)):
+    """Deleting is the same as dismissing: the posting is blocklisted so a
+    re-scan does not resurrect it."""
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(404, "job not found")
-    db.delete(job)
-    db.commit()
+    _dismiss(job, db)
 
 
 def _apply_stage_change(job: Job, new_stage: str) -> None:

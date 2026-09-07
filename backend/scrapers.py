@@ -26,47 +26,65 @@ if _parent_scraper.exists():
 else:
     from . import fetch_jobs_vendored as fj  # noqa: E402
 
-# Query-based sources take a query string; RSS sources take none.
+from .regional_scrapers import fetch_mustakbil, is_pakistan_location  # noqa: E402
+
+# Remote-only boards. They carry no on-site listings at all, so a location is
+# meaningless to them: appending a city to the search term ("product manager
+# Islamabad") just matched fewer jobs and multiplied the scan time. They run on
+# the base search terms only.
 QUERY_SOURCES: list[tuple[str, Callable]] = [
     ("remotive", fj.fetch_remotive),
     ("arbeitnow", fj.fetch_arbeitnow),
     ("himalayas", fj.fetch_himalayas),
     ("remoteok", fj.fetch_remoteok),
-    ("linkedin", fj.fetch_linkedin),
     ("hiringcafe", fj.fetch_hiringcafe),
     ("wellfound", fj.fetch_wellfound),
 ]
+
+# Boards that filter by location natively. Called as fn(query, location), once
+# per (query, location) pair. `accepts` gates which locations are worth asking a
+# board about — Mustakbil only lists Pakistan, so it is skipped elsewhere.
+# (Hiring.cafe's search API would belong here, but it is now auth-gated: POST
+# returns 405 and GET 401, so it cannot take a location — or anything else.)
+LOCATION_SOURCES: list[tuple[str, Callable, Callable[[str], bool] | None]] = [
+    ("linkedin", fj.fetch_linkedin, None),
+    ("mustakbil", fetch_mustakbil, is_pakistan_location),
+]
+
 RSS_SOURCES: list[tuple[str, Callable]] = [
     ("weworkremotely", fj.fetch_weworkremotely),
     ("remoteco", fj.fetch_remoteco),
 ]
 
+# The global pass every location-aware board runs in addition to the user's
+# cities. LinkedIn's own default for "search everywhere".
+GLOBAL_LOCATION = "Worldwide"
+
 DEFAULT_QUERIES = fj.QUERIES
 # Every source the app knows about, in display order (RSS first).
-ALL_SOURCES: list[str] = [name for name, _ in RSS_SOURCES + QUERY_SOURCES]
+ALL_SOURCES: list[str] = [
+    name for name, _ in RSS_SOURCES + QUERY_SOURCES
+] + [name for name, _, _ in LOCATION_SOURCES]
+
+# The boards that shipped before SearchConfig.known_sources existed. A config
+# saved back then has no known_sources, and we must not read that as "the user
+# has never been offered any of these" — that would switch a board they had
+# deliberately turned off back on. See init_db.
+LEGACY_SOURCES: list[str] = [
+    "weworkremotely", "remoteco", "remotive", "arbeitnow", "himalayas",
+    "remoteok", "linkedin", "hiringcafe", "wellfound",
+]
 
 
-def build_queries(
-    queries: list[str] | None, locations: list[str] | None
-) -> list[str]:
-    """Effective search terms: the base role queries (a global/remote pass),
-    plus one "<role> <city>" variant per user-added location. Empty locations
-    keeps the original global-only behavior."""
-    base = list(queries or DEFAULT_QUERIES)
-    if not locations:
-        return base
-    effective = list(base)
-    seen = set(base)
-    for loc in locations:
+def location_passes(locations: list[str] | None) -> list[str]:
+    """The locations to run a location-aware board against: the global pass plus
+    whatever the user configured, de-duplicated."""
+    passes = [GLOBAL_LOCATION]
+    for loc in locations or []:
         loc = loc.strip()
-        if not loc:
-            continue
-        for q in base:
-            combined = f"{q} {loc}"
-            if combined not in seen:
-                seen.add(combined)
-                effective.append(combined)
-    return effective
+        if loc and loc.lower() not in {p.lower() for p in passes}:
+            passes.append(loc)
+    return passes
 
 
 def run_scan(
@@ -77,16 +95,22 @@ def run_scan(
 ) -> tuple[list[dict], dict]:
     """Run the enabled sources and return (unique_jobs, per_source_counts).
 
+    Remote-only boards get the base search terms. Boards that filter by location
+    natively (LinkedIn, Mustakbil) get each term once per location: the global
+    pass plus every location the user configured.
+
     Dedupe here is only by URL within this scan; cross-run dedupe against the
     database (including fuzzy title+company) happens in the ingest layer.
 
     on_progress(source_name, added_now, running_total) is called after each
     source so the caller can stream progress.
     """
-    queries = build_queries(queries, locations)
+    queries = list(queries or DEFAULT_QUERIES)
+    passes = location_passes(locations)
     active = set(enabled_sources) if enabled_sources is not None else set(ALL_SOURCES)
     rss = [(n, f) for n, f in RSS_SOURCES if n in active]
     query_srcs = [(n, f) for n, f in QUERY_SOURCES if n in active]
+    loc_srcs = [(n, f, a) for n, f, a in LOCATION_SOURCES if n in active]
     seen_urls: set[str] = set()
     jobs: list[dict] = []
     counts: dict[str, int] = {}
@@ -113,7 +137,7 @@ def run_scan(
             if on_progress:
                 on_progress(name, 0, len(jobs))
 
-    # Query sources: per query
+    # Query sources: per query, no location (they are remote-only boards)
     for q in queries:
         for name, fn in query_srcs:
             try:
@@ -121,5 +145,19 @@ def run_scan(
             except Exception as exc:
                 print(f"[scan] {name} '{q}' failed: {exc}", file=sys.stderr)
             time.sleep(0.3)
+
+        # Location-aware sources: per query, per location the board covers
+        for name, fn, accepts in loc_srcs:
+            for loc in passes:
+                if accepts is not None and not accepts(loc):
+                    continue
+                try:
+                    take(name, fn(q, loc))
+                except Exception as exc:
+                    print(
+                        f"[scan] {name} '{q}' @ '{loc}' failed: {exc}",
+                        file=sys.stderr,
+                    )
+                time.sleep(0.3)
 
     return jobs, counts

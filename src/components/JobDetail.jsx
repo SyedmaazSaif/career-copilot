@@ -21,6 +21,14 @@ function openToApply(url) {
   else window.open(url, "_blank", "noreferrer");
 }
 
+// The system default browser (Electron's shell.openExternal), so a paywalled or
+// login-gated listing opens in a session you are already signed into. The web
+// dev build has no shell, so it opens a tab.
+function openInBrowser(url) {
+  if (window.copilot?.openExternal) window.copilot.openExternal(url);
+  else window.open(url, "_blank", "noreferrer");
+}
+
 export default function JobDetail({ jobId, onClose, onChanged }) {
   const [job, setJob] = useState(null);
   const [error, setError] = useState(null);
@@ -50,6 +58,19 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
       onChanged?.();
     } catch (err) {
       window.alert(err.message);
+    }
+  }
+
+  async function remove() {
+    const label = [job.title, job.company].filter(Boolean).join(" at ");
+    if (!window.confirm(`Remove "${label}"? It won't come back in future scans.`))
+      return;
+    try {
+      await api.post(`/api/jobs/${jobId}/dismiss`, {});
+      onChanged?.();
+      onClose();
+    } catch (err) {
+      window.alert(`Could not remove that job: ${err.message}`);
     }
   }
 
@@ -134,9 +155,14 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
               <div className="job-desc">{job.description || "No description captured."}</div>
             </section>
 
+            <ApplicationLinks job={job} onSaved={setJob} />
+
             <div className="modal-actions">
               <button className="btn-apply" onClick={() => openToApply(job.url)}>
                 Open listing to apply
+              </button>
+              <button className="btn-danger" onClick={remove}>
+                Remove job
               </button>
               <span className="apply-note">
                 Opens in the app's browser. You apply manually — the app never submits
@@ -147,6 +173,147 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
         )}
       </div>
     </div>
+  );
+}
+
+// One URL row: the link as selectable text, plus copy / open-in-browser.
+function LinkRow({ label, url, onCopy, copied }) {
+  return (
+    <div className="link-row">
+      <span className="link-row-label">{label}</span>
+      <span className="link-row-url mono" title={url}>
+        {url}
+      </span>
+      <button className="btn-secondary btn-sm" onClick={() => onCopy(url)}>
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <button className="btn-secondary btn-sm" onClick={() => openInBrowser(url)}>
+        Open in browser
+      </button>
+    </div>
+  );
+}
+
+// Boards paywall or expire their listings, so the company's own careers page is
+// often the only way to actually apply. It is resolved best-effort, and always
+// editable — a wrong guess should cost one paste to fix.
+function ApplicationLinks({ job, onSaved }) {
+  const [copied, setCopied] = useState(null); // which url was just copied
+  const [finding, setFinding] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(job.company_url || "");
+  const [note, setNote] = useState(null);
+
+  async function copy(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(url);
+      setTimeout(() => setCopied((c) => (c === url ? null : c)), 1500);
+    } catch {
+      setNote("Could not copy — select the link and copy it manually.");
+    }
+  }
+
+  async function findSite() {
+    setFinding(true);
+    setNote(null);
+    try {
+      const res = await api.post(`/api/jobs/${job.id}/find-company-site`, {});
+      if (res.company_url) {
+        onSaved({ ...job, company_url: res.company_url });
+      } else {
+        setNote("Couldn't find it — paste the company's careers link yourself.");
+        setEditing(true);
+      }
+    } catch (err) {
+      setNote(`Lookup failed: ${err.message}`);
+    } finally {
+      setFinding(false);
+    }
+  }
+
+  async function saveDraft() {
+    try {
+      const updated = await api.patch(`/api/jobs/${job.id}`, {
+        company_url: draft.trim(),
+      });
+      onSaved(updated);
+      setEditing(false);
+      setNote(null);
+    } catch (err) {
+      setNote(`Could not save: ${err.message}`);
+    }
+  }
+
+  return (
+    <section className="detail-section">
+      <h3>Application links</h3>
+      <div className="link-rows">
+        <LinkRow
+          label="Listing"
+          url={job.url}
+          onCopy={copy}
+          copied={copied === job.url}
+        />
+
+        {job.company_url && !editing && (
+          <LinkRow
+            label="Company site"
+            url={job.company_url}
+            onCopy={copy}
+            copied={copied === job.company_url}
+          />
+        )}
+
+        {editing ? (
+          <div className="link-row">
+            <span className="link-row-label">Company site</span>
+            <input
+              className="link-row-input"
+              placeholder="https://company.com/careers"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveDraft()}
+              autoFocus
+            />
+            <button className="btn-secondary btn-sm" onClick={saveDraft}>
+              Save
+            </button>
+            <button
+              className="btn-secondary btn-sm"
+              onClick={() => {
+                setDraft(job.company_url || "");
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="link-row link-row-actions">
+            {!job.company_url && (
+              <button
+                className="btn-secondary btn-sm"
+                onClick={findSite}
+                disabled={finding}
+              >
+                {finding ? "Looking…" : "Find company site"}
+              </button>
+            )}
+            <button
+              className="link-btn"
+              onClick={() => {
+                setDraft(job.company_url || "");
+                setEditing(true);
+              }}
+            >
+              {job.company_url ? "Edit company link" : "Paste it yourself"}
+            </button>
+          </div>
+        )}
+      </div>
+      {note && <p className="empty-hint">{note}</p>}
+    </section>
   );
 }
 

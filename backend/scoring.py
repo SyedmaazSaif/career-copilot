@@ -71,10 +71,21 @@ def build_profile_context(db: Session) -> dict:
         if config and config.preferred_arrangements
         else ["remote", "hybrid", "onsite"]
     )
+    # Where the user can already work without relocating: their own location plus
+    # the places they told the scanner to search. A job that requires being based
+    # in one of these is not country-locked *for them*.
+    home_locations = [
+        part.strip().lower()
+        for raw in ([profile.location] if profile and profile.location else [])
+        + list(config.locations or [] if config else [])
+        for part in re.split(r"[,/|]", raw)
+        if len(part.strip()) >= 3
+    ]
     return {
         "skills": [s.name.strip() for s in skills if s.name.strip()],
         "title": (profile.title if profile else "") or "",
         "preferred_arrangements": preferred,
+        "home_locations": home_locations,
     }
 
 
@@ -191,9 +202,16 @@ def _title_score(title: str, text: str) -> tuple[int, str, list[str]]:
     return round(W_TITLE * 0.45), "ambiguous", flags
 
 
-def _visa_score(text: str, location: str) -> tuple[int, str, list[str]]:
+def _visa_score(
+    text: str, location: str, home_locations: list[str] | None = None
+) -> tuple[int, str, list[str]]:
     loc = location.lower()
     flags: list[str] = []
+    # "Must be based in Islamabad" is not a barrier to someone who lives in
+    # Islamabad — or who put Pakistan in their search locations. Only treat a
+    # location requirement as a red flag when it points somewhere the user is
+    # not already able to work.
+    at_home = any(h in loc or h in text for h in (home_locations or []))
     us_only = (
         "us citizen" in text or "u.s. citizen" in text or "green card" in text
         or "security clearance" in text or "must be authorized to work in the us" in text
@@ -206,6 +224,9 @@ def _visa_score(text: str, location: str) -> tuple[int, str, list[str]]:
     if us_only:
         flags.append("US work authorization / clearance required")
         return 0, "US-only", flags
+    if at_home:
+        # No visa needed — this is a role where the user already lives.
+        return W_VISA, "your location", flags
     if country_locked:
         flags.append("Requires being based in a specific country")
         return round(W_VISA * 0.3), "country-locked", flags
@@ -236,7 +257,9 @@ def score_job(job: dict, ctx: dict) -> tuple[int, dict, list[str], str, str]:
     skill_s, matched_skills = _skill_score(text, ctx["skills"])
     title_s, title_label, title_flags = _title_score(job.get("title", ""), text)
     arrange_s, arrange_label = _arrangement_score(work_type, preferred)
-    visa_s, visa_label, visa_flags = _visa_score(text, location)
+    visa_s, visa_label, visa_flags = _visa_score(
+        text, location, ctx.get("home_locations")
+    )
     domain_s, matched_domains = _domain_score(text)
 
     total = max(0, min(100, skill_s + title_s + arrange_s + visa_s + domain_s))

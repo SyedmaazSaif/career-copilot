@@ -14,7 +14,9 @@ function fmtSalary(job) {
   return k(hi || lo);
 }
 
-export default function JobsTable({ onOpen }) {
+// newOnly is owned by JobsPage so the post-scan banner can switch to this view
+// with the filter already on.
+export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -26,13 +28,32 @@ export default function JobsTable({ onOpen }) {
   const [minScore, setMinScore] = useState(0);
   const [minSalary, setMinSalary] = useState(0); // in $k
   const [flagsOnly, setFlagsOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("score"); // score | newest
 
+  // "New this scan" is the one absolute filter: the backend returns only jobs
+  // first seen by the latest completed scan. The rest stay relaxed/relevance-ranked.
   useEffect(() => {
+    setJobs(null);
     api
-      .get("/api/jobs?limit=1000")
+      .get(`/api/jobs?limit=1000${newOnly ? "&new_only=true" : ""}`)
       .then(setJobs)
       .catch((e) => setError(e.message));
-  }, []);
+  }, [newOnly]);
+
+  async function remove(e, job) {
+    e.stopPropagation(); // the row itself opens the job
+    const label = [job.title, job.company].filter(Boolean).join(" at ");
+    if (!window.confirm(`Remove "${label}"? It won't come back in future scans.`))
+      return;
+    try {
+      await api.post(`/api/jobs/${job.id}/dismiss`, {});
+      // Drop it locally rather than bumping dataVersion: a remount would reset
+      // the filters mid-triage, and the other views refetch when reopened.
+      setJobs((prev) => (prev ? prev.filter((j) => j.id !== job.id) : prev));
+    } catch (err) {
+      window.alert(`Could not remove that job: ${err.message}`);
+    }
+  }
 
   const sources = useMemo(
     () => [...new Set((jobs || []).map((j) => j.source))].sort(),
@@ -70,6 +91,14 @@ export default function JobsTable({ onOpen }) {
     if (!jobs) return { rows: [], activeCount: 0 };
     const tokens = search.toLowerCase().split(/\s+/).filter(Boolean);
     const loc = locationQ.trim().toLowerCase();
+    const firstSeen = (j) =>
+      j.first_scanned_at ? new Date(j.first_scanned_at).getTime() : 0;
+    // "Newest first" overrides the ranking entirely; "Score" keeps the existing
+    // relevance-then-score order.
+    const order = (a, b) =>
+      sortBy === "newest"
+        ? firstSeen(b.job) - firstSeen(a.job) || b.job.score - a.job.score
+        : b.relevance - a.relevance || b.job.score - a.job.score;
 
     const criteria = [];
     if (tokens.length) criteria.push((j) => (matchesRelevance(j, tokens) ? 1 : 0));
@@ -89,9 +118,9 @@ export default function JobsTable({ onOpen }) {
 
     const active = criteria.length;
     if (active === 0) {
-      const all = [...jobs]
-        .sort((a, b) => b.score - a.score)
-        .map((j) => ({ job: j, matched: 0 }));
+      const all = jobs
+        .map((j) => ({ job: j, matched: 0, relevance: 0 }))
+        .sort(order);
       return { rows: all, activeCount: 0 };
     }
 
@@ -107,9 +136,9 @@ export default function JobsTable({ onOpen }) {
         return { job: j, matched, relevance: sum };
       })
       .filter((x) => x.relevance > 0)
-      .sort((a, b) => b.relevance - a.relevance || b.job.score - a.job.score);
+      .sort(order);
     return { rows: scored, activeCount: active };
-  }, [jobs, search, locationQ, stage, source, workType, empType, minScore, minSalary, flagsOnly]);
+  }, [jobs, search, locationQ, stage, source, workType, empType, minScore, minSalary, flagsOnly, sortBy]);
 
   if (jobs === null && !error) return <div className="muted">Loading…</div>;
   if (error) return <div className="banner error">{error}</div>;
@@ -183,6 +212,10 @@ export default function JobsTable({ onOpen }) {
           />
           <span className="mono">k</span>
         </label>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="score">Sort: Score</option>
+          <option value="newest">Sort: Newest first</option>
+        </select>
         <label className="filter-check">
           <input
             type="checkbox"
@@ -191,8 +224,17 @@ export default function JobsTable({ onOpen }) {
           />
           Red flags only
         </label>
+        <label className="filter-check">
+          <input
+            type="checkbox"
+            checked={!!newOnly}
+            onChange={(e) => onNewOnlyChange?.(e.target.checked)}
+          />
+          New this scan
+        </label>
         <span className="filter-count mono">
-          {rows.length} jobs{activeCount > 0 ? " · ranked by match" : ""}
+          {rows.length} jobs
+          {activeCount > 0 && sortBy === "score" ? " · ranked by match" : ""}
         </span>
       </div>
 
@@ -215,6 +257,7 @@ export default function JobsTable({ onOpen }) {
               <th>Stage</th>
               <th>Source</th>
               <th>Flags</th>
+              <th className="col-remove"></th>
             </tr>
           </thead>
           <tbody>
@@ -226,7 +269,10 @@ export default function JobsTable({ onOpen }) {
                     <MatchMeter score={job.score} size={42} stroke={5} />
                   </td>
                   <td>
-                    <div className="cell-title">{job.title}</div>
+                    <div className="cell-title">
+                      {job.is_new && <span className="new-pill">New</span>}
+                      {job.title}
+                    </div>
                     <div className="cell-company">{job.company || "—"}</div>
                     {activeCount > 0 && (
                       <span
@@ -266,6 +312,16 @@ export default function JobsTable({ onOpen }) {
                       <span className="dim">—</span>
                     )}
                   </td>
+                  <td className="col-remove">
+                    <button
+                      className="row-remove"
+                      title="Remove this job — it won't come back in future scans"
+                      aria-label={`Remove ${job.title}`}
+                      onClick={(e) => remove(e, job)}
+                    >
+                      ✕
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -273,7 +329,9 @@ export default function JobsTable({ onOpen }) {
         </table>
         {rows.length === 0 && (
           <p className="empty-hint" style={{ padding: "16px" }}>
-            No jobs yet — run a scan to populate the list.
+            {newOnly
+              ? "Nothing new in the latest scan — untick “New this scan” to see everything."
+              : "No jobs yet — run a scan to populate the list."}
           </p>
         )}
       </div>
