@@ -21,6 +21,10 @@ backend/data/
 # internal build log (not needed by users of the shared project)
 PROGRESS.md
 
+# launcher written by setup.command on the user's own machine, so that it
+# carries no macOS quarantine flag and opens on a double-click
+career-copilot.command
+
 # os
 .DS_Store
 Thumbs.db
