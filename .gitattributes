@@ -9,6 +9,13 @@
 
 * text=auto
 
+# Never touch these: a zip is not text, and normalising one corrupts it.
+*.zip       binary
+*.png       binary
+*.docx      binary
+*.xlsx      binary
+*.pdf       binary
+
 # Must be LF: run by macOS.
 *.sh        text eol=lf
 *.command   text eol=lf
