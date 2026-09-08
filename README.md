@@ -15,8 +15,9 @@ create.** Your data never leaves your machine.
 generator, ATS resume, AI job search assistant, remote jobs, applicant tracking
 system, job board aggregator.
 
-> **Just want to install it?** See **[INSTALL.md](INSTALL.md)** for step-by-step
-> Windows and macOS instructions. Prefer to let an AI do the whole setup? See
+> **Just want to install it?** Jump to **[Install](#install)** below, or see
+> **[INSTALL.md](INSTALL.md)** for the same thing with every step spelled out
+> and a troubleshooting section. Prefer to let an AI do the whole setup? See
 > **[SETUP_WITH_AI.md](SETUP_WITH_AI.md)**.
 
 ---
@@ -81,11 +82,12 @@ system, job board aggregator.
 ## Optional free local AI (Ollama)
 
 Resume parsing and CV wording are smarter with a local AI model, and it stays
-free and private. The easiest way to turn it on: open **Settings** in the app and
-click **"Set up local AI"** — it reads your computer's memory and graphics, tells
-you which model it can actually run and what a larger one would do, and only then
-installs Ollama and downloads that model, showing each step. You do this once
-(automatic install is Windows-only).
+free and private. **The installer offers it during setup** — it reads your
+computer's memory and graphics, tells you which model it can actually run and
+what a larger one would do, and installs it only if you say yes. You can also
+turn it on at any time afterwards: open **Settings** in the app and click
+**"Set up local AI"**, which runs the identical steps. Automatic install covers
+Windows and macOS.
 
 Prefer to do it yourself? Install Ollama (<https://ollama.com>), run
 `ollama pull llama3.2:1b`, and set `OLLAMA_ENABLED=true` in `.env`.
@@ -125,42 +127,69 @@ nicer wording later. Nothing requires it, and no paid AI service is ever called.
 
 ## Requirements
 
-- **Node.js** 18 or newer — <https://nodejs.org>
-- **Python** 3.10 or newer — <https://python.org>
-- Windows or macOS. (These are the only two things you install; the app handles
-  the rest.)
+- Windows 10/11, or macOS on Intel or Apple Silicon.
+- About 2 GB of free disk space, plus 1–5 GB more if you choose the local AI.
+- Node.js 18+ and Python 3.10+ — **the installer installs these for you if they
+  are missing.** You do not need to install anything yourself first.
 
 ---
 
-## Install and run
+## Install
 
-The friendly, guided version is in **[SETUP_WITH_AI.md](SETUP_WITH_AI.md)**. The
-short technical version:
+One installer per system. It downloads the app, installs everything it needs —
+**including Node.js and Python if your computer does not have them** — offers
+the optional local AI, and starts the app. You are never sent to another website
+to install something by hand, and on macOS it never asks for your password.
+
+### Windows
+
+1. Right-click
+   [`install-windows.bat`](https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-windows.bat)
+   and choose **Save link as…** (left-clicking just shows the text).
+2. Double-click the downloaded file.
+3. If Windows says *"Windows protected your PC"*, click **More info** →
+   **Run anyway**. That warning is about the file being downloaded, not about
+   this file.
+
+It installs to `C:\Users\<you>\career-copilot` and puts a **career-copilot**
+shortcut on your Desktop. Launch it from there next time.
+
+### macOS
+
+Open **Terminal** (`Cmd + Space`, type `Terminal`, Return), then paste this line
+and press Return:
 
 ```bash
-# 1. Front-end dependencies
-npm install
-
-# 2. Back-end: create a Python virtual environment and install into it
-python -m venv backend/.venv
-# Windows:
-backend/.venv/Scripts/python -m pip install -r backend/requirements.txt
-# macOS/Linux:
-backend/.venv/bin/python -m pip install -r backend/requirements.txt
-
-# 3. Start everything (Electron + React + Python together)
-npm run dev
+curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
 ```
 
-**Even simpler on Windows:** double-click **`setup.bat`** — it checks for Node and
-Python (installing them via winget if missing), installs everything, and starts
-the app. After the first run, launch anytime by double-clicking
-**`career-copilot.vbs`** (no console window).
+It installs to `~/career-copilot`. Launch it next time by double-clicking
+`career-copilot.command` in that folder.
+
+A pasted command rather than a file to double-click, because macOS quarantines
+every downloaded file and Gatekeeper then blocks unsigned scripts with *"cannot
+be opened"* or *"will damage your computer"*. Code arriving through a pipe is
+never quarantined, so this route has no wall to climb — the same reason Homebrew
+and Ollama install this way. [INSTALL.md](INSTALL.md) has the click-a-file
+alternative if you prefer it.
+
+### Running from source instead
+
+```bash
+npm install                                                   # front end
+python -m venv backend/.venv                                  # back end
+backend/.venv/Scripts/python -m pip install -r backend/requirements.txt   # Windows
+backend/.venv/bin/python -m pip install -r backend/requirements.txt       # macOS
+npm run dev                                                   # start everything
+```
+
+Or double-click `setup.bat` (Windows) / `setup.command` (macOS) in a copy of the
+repo, which does all of the above plus the local-AI offer.
 
 ### First run
-1. Open the **Profile** tab and fill in your details, or copy
-   `master_profile.example.yaml` to `master_profile.yaml`, edit it, and click
-   **Import from YAML**.
+1. Open the **Profile** tab and click **Upload resume**, or fill in your details
+   by hand — or copy `master_profile.example.yaml` to `master_profile.yaml`,
+   edit it, and click **Import from YAML**.
 2. Open **Settings** and adjust the search terms and boards if you like.
 3. Open **Jobs** and click **Scan now**. The first scan takes a few minutes.
 4. Drag roles you like into **Applied** and open each one to apply.

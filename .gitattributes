@@ -1,0 +1,19 @@
+# Line endings are load-bearing here, not cosmetic.
+#
+# A shell script that reaches macOS with CRLF endings fails on its first line
+# with "bad interpreter: /bin/bash^M", which is an unhelpful error at the worst
+# possible moment -- someone's very first attempt to install the app. Most of
+# this project is edited on Windows, where git's autocrlf would do exactly that,
+# so pin the endings per file type rather than trusting each contributor's
+# config.
+
+* text=auto
+
+# Must be LF: run by macOS.
+*.sh        text eol=lf
+*.command   text eol=lf
+
+# Must be CRLF: cmd.exe is unreliable with LF-only batch files.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.vbs       text eol=crlf
