@@ -9,28 +9,25 @@ Jump to: **[Windows](#windows)** · **[macOS](#macos)** ·
 **[First run](#first-time-in-the-app-both-systems)** ·
 **[If something goes wrong](#if-something-goes-wrong)**
 
-> **Why two files and not one?** A file can only have one extension, and each
-> system will only run its own: Windows runs `.bat`, macOS runs `.command` and
-> `.sh`. One file that both systems will open on a double-click does not exist.
-> Both installers below do exactly the same thing.
+> **Why two downloads and not one?** Windows and macOS will not run each
+> other's programs, so there is no single file both can open — the same
+> reason apps ship a Windows download and a Mac download separately. Both
+> installers below do exactly the same thing.
 
 ---
 
 ## Windows
 
-**1. Download the installer.**
-Right-click this link and choose **Save link as…**:
-[`install-windows.bat`](https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-windows.bat)
+**1. Download the installer:**
+[**Install-Career-Copilot-Windows.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip)
 
-(Left-clicking shows the text in your browser instead of saving it — GitHub
-serves it as plain text. Right-click, save, done.)
-
-**2. Double-click the downloaded `install-windows.bat`.**
+**2. Open the downloaded zip** and double-click **Install Career Copilot**
+inside it.
 
 **3. If Windows says "Windows protected your PC"**, click **More info**, then
 **Run anyway**. That warning appears for every file downloaded from the
-internet that Microsoft has not been paid to certify; it is not about this file
-specifically.
+internet that Microsoft has not been paid to certify; it is not about this
+file specifically.
 
 **4. Wait.** A black window shows each step. The first install takes a few
 minutes — it is downloading Node, Python, and the app's libraries. The app
@@ -46,41 +43,54 @@ in the app folder (it opens the app with no black console window).
 
 ## macOS
 
-**1. Open Terminal.** Press `Cmd + Space`, type `Terminal`, press Return.
+**1. Download the installer:**
+[**Install-Career-Copilot-Mac.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip)
 
-**2. Paste this line and press Return:**
+**2. Open the downloaded zip** (double-click it, if your browser has not
+already unzipped it). You get a file called **Install Career Copilot**.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
-```
+**3. Right-click that file and choose Open.** Then click **Open** again in the
+box that appears.
 
-**3. Wait.** Terminal shows each step. The first install takes a few minutes.
-The app window opens on its own when it finishes.
+> **Right-click → Open, not double-click.** This one matters. A plain
+> double-click gets refused the first time, with *"cannot be opened because it
+> is from an unidentified developer"* or *"will damage your computer"*.
+> Right-clicking and choosing **Open** gives you the same box with an **Open**
+> button on it. You only do this once, ever.
+>
+> On macOS Sequoia (15) and newer, if there is no Open button: go to
+> **System Settings → Privacy & Security**, scroll down to the message about
+> the blocked file, and click **Open Anyway**.
+
+**4. Wait.** A Terminal window opens and shows each step. The first install
+takes a few minutes. The app window opens on its own when it finishes.
 
 That is the whole install. It puts the app in `~/career-copilot` and creates a
 `career-copilot.command` file inside that folder.
 
 **Later launches:** double-click **`career-copilot.command`** in the
-`career-copilot` folder in your home directory.
+`career-copilot` folder in your home directory. No warning this time — the
+installer clears it for you.
 
-### Why a pasted command instead of a file to double-click
+### Or, if you prefer the Terminal
 
-macOS marks every file a browser downloads as untrusted, and Gatekeeper then
-refuses to open unsigned scripts — the **"cannot be opened because it is from
-an unidentified developer"** and **"will damage your computer"** messages. The
-only real fix is an Apple-signed and notarised app, which needs a paid Apple
-Developer account.
+One line, no download and no security warning at all:
 
-Code that arrives through a pipe is never marked that way, so the pasted
-command above simply never meets Gatekeeper. It is the same method Homebrew and
-Ollama use, and it is why it is the recommended route here.
+```bash
+curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
+```
 
-**If you would rather click a file:** download the project as a ZIP
-(green **Code** button → **Download ZIP**), unzip it, then **right-click**
-`setup.command` → **Open** → **Open**. Right-click-Open is what gets you past
-Gatekeeper; a plain double-click will not, the first time. On macOS Sequoia and
-newer you may instead need **System Settings → Privacy & Security**, scroll
-down, and click **Open Anyway**.
+### Why does macOS warn about this at all?
+
+macOS flags every file a browser downloads, and Gatekeeper then refuses to open
+programs that Apple has not certified. Getting rid of that warning completely
+means signing and notarising the app with Apple, which requires a paid Apple
+Developer account — there is no free way around it, for any app.
+
+The warning is about who signed the file, not about what the file does. You can
+read every line of it: it is
+[`install-macos.sh`](https://github.com/SyedmaazSaif/career-copilot/blob/main/install-macos.sh)
+in this repository.
 
 ### Does it need my password?
 
@@ -147,9 +157,9 @@ Prefer to do it by hand? Install Ollama from <https://ollama.com>, run
 **"Windows protected your PC"** — click **More info** → **Run anyway**. See
 step 3 above.
 
-**macOS: "cannot be opened" / "will damage your computer"** — use the pasted
-Terminal command above, which avoids this entirely. See
-[why](#why-a-pasted-command-instead-of-a-file-to-double-click).
+**macOS: "cannot be opened" / "will damage your computer"** — **right-click**
+the file and choose **Open**, then **Open** again. A double-click will not do
+it the first time. See [why](#why-does-macos-warn-about-this-at-all).
 
 **"Node.js was installed but is not visible yet"** (Windows) — close the window
 and double-click the installer once more. Windows sometimes needs a fresh

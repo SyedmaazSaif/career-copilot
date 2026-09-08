@@ -8,6 +8,9 @@ REM
 REM If Windows shows "Windows protected your PC", that is SmartScreen reacting
 REM to a file downloaded from the internet, not a problem with this file:
 REM click "More info", then "Run anyway".
+REM
+REM NOTE: Install-Career-Copilot-Windows.zip carries a copy of this file, so
+REM after editing it re-run:  python mac-installer/build_zip.py
 
 setlocal enabledelayedexpansion
 title career-copilot installer

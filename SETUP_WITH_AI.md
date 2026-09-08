@@ -25,11 +25,14 @@ experience, and lets you track and apply to them — all in one window, for free
 It is genuinely one step, and it installs Node and Python for you if you do not
 have them:
 
-- **Windows:** right-click
-  [`install-windows.bat`](https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-windows.bat),
-  choose **Save link as…**, then double-click the downloaded file.
-- **macOS:** open Terminal and paste:
-  `curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash`
+- **Windows:** download
+  [Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip),
+  open it, and double-click **Install Career Copilot** inside.
+- **macOS:** download
+  [Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip),
+  open it, then **right-click** **Install Career Copilot** inside and choose
+  **Open** → **Open**. (Right-click, not double-click — macOS blocks a
+  downloaded program until you confirm once.)
 
 If the app window opens, you are done — **skip to Step 5**. If something goes
 wrong, carry on below and let an AI assistant sort it out.

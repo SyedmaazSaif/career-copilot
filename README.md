@@ -143,35 +143,32 @@ to install something by hand, and on macOS it never asks for your password.
 
 ### Windows
 
-1. Right-click
-   [`install-windows.bat`](https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-windows.bat)
-   and choose **Save link as…** (left-clicking just shows the text).
-2. Double-click the downloaded file.
+1. Download **[Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip)**.
+2. Open the zip and double-click **Install Career Copilot** inside it.
 3. If Windows says *"Windows protected your PC"*, click **More info** →
-   **Run anyway**. That warning is about the file being downloaded, not about
-   this file.
+   **Run anyway**. That warning is about the file being downloaded, not
+   about this file.
 
 It installs to `C:\Users\<you>\career-copilot` and puts a **career-copilot**
 shortcut on your Desktop. Launch it from there next time.
 
 ### macOS
 
-Open **Terminal** (`Cmd + Space`, type `Terminal`, Return), then paste this line
-and press Return:
+1. Download **[Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip)**.
+2. Open the zip. **Right-click** the **Install Career Copilot** file inside
+   and choose **Open**, then **Open** again.
+3. A Terminal window opens and shows each step.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
-```
+**Right-click → Open, not double-click** — a plain double-click is refused
+the first time with *"cannot be opened"* or *"will damage your computer"*.
+macOS flags everything a browser downloads, and clearing that warning for
+good requires a paid Apple Developer account to sign and notarise the app.
+You only do the right-click once.
 
 It installs to `~/career-copilot`. Launch it next time by double-clicking
-`career-copilot.command` in that folder.
-
-A pasted command rather than a file to double-click, because macOS quarantines
-every downloaded file and Gatekeeper then blocks unsigned scripts with *"cannot
-be opened"* or *"will damage your computer"*. Code arriving through a pipe is
-never quarantined, so this route has no wall to climb — the same reason Homebrew
-and Ollama install this way. [INSTALL.md](INSTALL.md) has the click-a-file
-alternative if you prefer it.
+`career-copilot.command` in that folder — no warning, the installer clears
+it. Prefer the Terminal? One line, no warning at all:
+`curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash`
 
 ### Running from source instead
 
