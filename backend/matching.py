@@ -572,6 +572,47 @@ def build_profile(db: Session) -> dict:
     }
 
 
+def derive_queries(profile: dict, limit: int = 15) -> list[str]:
+    """Search terms for a scan, from the same résumé the scoring uses.
+
+    The old default was a fixed list of product-management titles, which made
+    the whole app a product-manager finder: every scan asked boards for
+    "product manager" and never for "welder" or "registered nurse", so those
+    jobs never entered the database even though the boards had them. Queries
+    now come from the profile itself — target titles first, then distinctive
+    skills — so a welder's résumé asks for welding roles and a nurse's for
+    nursing roles.
+    """
+    queries: list[str] = []
+    seen: set[str] = set()
+
+    def add(term: str) -> None:
+        term = re.sub(r"[^a-z0-9+# ]", " ", (term or "").lower())
+        term = re.sub(r"\s+", " ", term).strip()
+        if not term or len(term) < 3 or term in seen or len(term.split()) > 6:
+            return
+        seen.add(term)
+        queries.append(term)
+
+    for title in profile.get("target_titles") or []:
+        add(title)
+        # "Senior PM — Consumer Platforms" -> also search the core "Senior PM".
+        add(re.split(r"\s*[—–|·]\s*", title, 1)[0])
+
+    for skill in profile.get("skills") or []:
+        for part in skill_parts(skill):
+            words = [
+                w for w in tokenize(part)
+                if w not in _GENERIC_ALONE and w not in _GENERIC_SKILL_WORDS
+            ]
+            if words:
+                add(" ".join(words))
+        if len(queries) >= limit:
+            break
+
+    return queries[:limit]
+
+
 # ---------------------------------------------------------------------------
 # Scoring
 # ---------------------------------------------------------------------------

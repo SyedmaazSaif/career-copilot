@@ -92,8 +92,15 @@ def run_scan(
     enabled_sources: list[str] | None = None,
     on_progress: Callable[[str, int, int], None] | None = None,
     locations: list[str] | None = None,
-) -> tuple[list[dict], dict]:
-    """Run the enabled sources and return (unique_jobs, per_source_counts).
+) -> tuple[list[dict], dict, dict]:
+    """Run the enabled sources and return (unique_jobs, per_source_counts, health).
+
+    `health` reports, per source, how many of its calls succeeded and how many
+    raised. The stale sweep needs this: a board that was rate-limited or moved
+    its endpoint returns nothing, and without knowing that happened, every job
+    from that board looks like it vanished from the internet. Boards do this
+    routinely, so treating an outage as "all these jobs closed" would retire a
+    column of live jobs every time LinkedIn throttled us.
 
     Remote-only boards get the base search terms. Boards that filter by location
     natively (LinkedIn, Mustakbil) get each term once per location: the global
@@ -105,7 +112,7 @@ def run_scan(
     on_progress(source_name, added_now, running_total) is called after each
     source so the caller can stream progress.
     """
-    queries = list(queries or DEFAULT_QUERIES)
+    queries = list(DEFAULT_QUERIES if queries is None else queries)
     passes = location_passes(locations)
     active = set(enabled_sources) if enabled_sources is not None else set(ALL_SOURCES)
     rss = [(n, f) for n, f in RSS_SOURCES if n in active]
@@ -114,6 +121,11 @@ def run_scan(
     seen_urls: set[str] = set()
     jobs: list[dict] = []
     counts: dict[str, int] = {}
+    health: dict[str, dict] = {}
+
+    def record(source_name: str, ok: bool) -> None:
+        entry = health.setdefault(source_name, {"ok": 0, "failed": 0})
+        entry["ok" if ok else "failed"] += 1
 
     def take(source_name: str, batch: list[dict]) -> None:
         added = 0
@@ -132,7 +144,9 @@ def run_scan(
     for name, fn in rss:
         try:
             take(name, fn())
+            record(name, True)
         except Exception as exc:  # a broken source must not sink the scan
+            record(name, False)
             print(f"[scan] {name} failed: {exc}", file=sys.stderr)
             if on_progress:
                 on_progress(name, 0, len(jobs))
@@ -142,7 +156,9 @@ def run_scan(
         for name, fn in query_srcs:
             try:
                 take(name, fn(q))
+                record(name, True)
             except Exception as exc:
+                record(name, False)
                 print(f"[scan] {name} '{q}' failed: {exc}", file=sys.stderr)
             time.sleep(0.3)
 
@@ -153,11 +169,13 @@ def run_scan(
                     continue
                 try:
                     take(name, fn(q, loc))
+                    record(name, True)
                 except Exception as exc:
+                    record(name, False)
                     print(
                         f"[scan] {name} '{q}' @ '{loc}' failed: {exc}",
                         file=sys.stderr,
                     )
                 time.sleep(0.3)
 
-    return jobs, counts
+    return jobs, counts, health
