@@ -189,6 +189,15 @@ job title written into the source.
 | Arrangement | 10 | Remote / hybrid / on-site, against what the user said they want |
 | Eligibility | 10 | Location and work-authorisation reachability for this user |
 
+Arrangement and eligibility are *suitability*, not relevance. They answer
+"can you take this job" — is it remote, is there a visa barrier — and a "yes"
+to that says nothing about whether the job is your line of work. They therefore
+do not add flat points; they lift a job in proportion to how well it already
+matches on skills, role and text. At full relevance they are worth their 10
+points each; at zero relevance they add nothing. This is what stops a welder
+from seeing an engineering manager ranked above real trade roles merely
+because both are remote and open worldwide.
+
 Text similarity is what makes the system background-agnostic. It needs no
 keyword list, because the résumé *is* the keyword list. A welder's résumé pulls
 welding postings to the top by the same mechanism that pulls product postings
@@ -197,7 +206,11 @@ up for a product manager.
 Seniority is parsed generically — intern, junior, mid, senior, lead, principal,
 head, director, VP, C-level — and compared as a distance in bands rather than
 against a list of acceptable titles. Two bands up is a stretch; three is a
-mismatch. That works for any profession.
+mismatch. That works for any profession. Seniority only adjusts a title that
+already overlaps the user's own; a job whose title shares no word with the
+profile earns no seniority credit, and a title made only of generic words (for
+example "Contract IT Specialist") earns no role points at all — "no signal" is
+not "half a match".
 
 **Optional semantic layer.** When Ollama is installed, the text-similarity axis
 is computed from embeddings (`all-minilm`, 23M, via `/api/embed`) instead of

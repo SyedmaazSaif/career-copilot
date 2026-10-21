@@ -33,10 +33,10 @@ from sqlalchemy.orm import Session
 from .models import Bullet, Education, Experience, Profile, SearchConfig, Skill
 
 # Bump when the rubric changes; jobs carrying an older version get rescored on
-# the next app start. 3: title overlap stopped counting role-shape words like
-# "senior" and "manager", and composite skills ("Growth & Monetization") are
-# split into terms a posting might actually contain.
-SCORE_VERSION = 3
+# the next app start. 4: arrangement and eligibility stopped being flat additive
+# points and instead lift a job in proportion to how well it already matches,
+# and role fit stopped awarding free points when there is no title to compare.
+SCORE_VERSION = 4
 
 W_SKILLS = 35
 W_ROLE = 25
@@ -358,7 +358,10 @@ def _role_component(
     """Title overlap plus seniority distance. No hardcoded title list."""
     jt = _title_terms(job_title)
     if not jt or not target_titles:
-        return round(W_ROLE * 0.4), {"label": "no title to compare", "overlap": []}
+        # A title with no meaningful words (or no stated target) is "no
+        # signal", not "half a match". Awarding 40% here gave "Contract IT
+        # Specialist" ten free points against a welder's profile.
+        return 0, {"label": "no title to compare", "overlap": []}
 
     best_overlap: set[str] = set()
     for target in target_titles:
@@ -372,9 +375,13 @@ def _role_component(
     base = overlap_ratio * (W_ROLE * 0.7)
 
     band_name, job_band = seniority_band(job_title)
-    band_points = W_ROLE * 0.3
     label = band_name or "unstated"
-    if job_band is not None and user_band is not None:
+    if not best_overlap:
+        # Seniority only adjusts a title that already overlaps. A job whose
+        # title shares nothing with yours earns no seniority credit, however
+        # senior it is.
+        band_points = 0.0
+    elif job_band is not None and user_band is not None:
         gap = job_band - user_band
         if gap <= 0:
             band_points = W_ROLE * 0.3          # at or below your level
@@ -661,7 +668,17 @@ def score_job(job: dict, profile: dict) -> dict:
     )
 
     if profile["has_resume"]:
-        total = skills_s + role_s + text_s + arrange_s + elig_s
+        # Arrangement and eligibility answer "can you take this job", not "does
+        # this job fit your career". Awarding them flat made any remote,
+        # open-worldwide posting start at 20 points before a single skill or
+        # title was considered, so a welder saw an engineering manager ranked
+        # above real trade roles. They now lift a job in proportion to how well
+        # it already matches: full weight at full relevance, nothing at zero.
+        fit = skills_s + role_s + text_s
+        fit_ratio = fit / (W_SKILLS + W_ROLE + W_TEXT)
+        arrange_s = round(arrange_s * fit_ratio)
+        elig_s = round(elig_s * fit_ratio)
+        total = fit + arrange_s + elig_s
     else:
         # Without a résumé, skills and text similarity are structurally zero.
         # Scoring out of the axes that do work, then scaling, avoids telling
