@@ -2,8 +2,9 @@
 
 Text extraction is deterministic (pypdf / python-docx). Turning that text into
 structured profile records uses the optional local Ollama model when available;
-without it, a light heuristic fills contact details and the summary and leaves
-the rest for the user to complete. No paid API is ever used.
+without it, a deterministic heuristic still fills contact details, title, skills,
+work experience and education, so an upload is useful even when the local model
+is switched off or crashes. No paid API is ever used.
 
 The AI pass is deliberately split into three small, section-scoped calls rather
 than one request for the whole schema. A local model on a laptop is slow in
@@ -264,7 +265,125 @@ def _ai_extras(sections: dict[str, str], text: str) -> tuple[dict | None, str | 
 
 # --- deterministic fallback ------------------------------------------------
 
+_SKILL_SPLIT_RE = re.compile(r"[,;•|]")
+_DATE_RE = re.compile(r"(?:19|20)\d{2}|present|current", re.I)
+_DATE_ONLY_RE = re.compile(
+    r"^(?:[A-Za-z]{3,9}\s+)?(?:19|20)\d{2}\s*(?:[–-]\s*(?:present|current|(?:19|20)\d{2}))?$",
+    re.I,
+)
+
+
+def _split_skill_items(line: str) -> list[str]:
+    """Break one skills-section line into candidate skill names."""
+    parts: list[str] = []
+    for chunk in _SKILL_SPLIT_RE.split(line):
+        chunk = chunk.strip().strip("•-–*").strip()
+        if chunk:
+            parts.append(chunk)
+    return parts
+
+
+def _is_skill_name(name: str) -> bool:
+    """A skill is short and looks like a phrase, not a sentence or a URL."""
+    if not (1 <= len(name.split()) <= 5):
+        return False
+    if not (2 <= len(name) <= 60):
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 +#&/.()'’-]*", name))
+
+
+def _heuristic_skills(text: str) -> list[dict]:
+    """Skills from a skills/competencies section, tolerating 'Category: items'."""
+    if not text:
+        return []
+    skills: list[dict] = []
+    seen: set[str] = set()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        category = ""
+        head, sep, rest = line.partition(":")
+        if sep and head.strip() and len(head.strip()) <= 40 and rest.strip():
+            category = head.strip()
+            line = rest.strip()
+        for item in _split_skill_items(line):
+            name = item.strip().strip("()").strip()
+            key = name.lower()
+            if _is_skill_name(name) and key not in seen:
+                seen.add(key)
+                skills.append({"name": name, "category": category, "proficiency": ""})
+    return skills
+
+
+def _heuristic_experiences(text: str) -> list[dict]:
+    """Work history from 'Role | Company' blocks, with bullets.
+
+    Deliberately plain: this is the no-AI floor. The local model enriches it
+    when available, and the user reviews the result before it is applied.
+    """
+    if not text:
+        return []
+    experiences: list[dict] = []
+    current: dict | None = None
+    for raw in text.splitlines():
+        ln = raw.strip()
+        if not ln:
+            continue
+        if ln.startswith(("•", "-", "*", "–")) or re.match(r"^\d{1,2}[.)]\s", ln):
+            if current is not None:
+                current["bullets"].append(
+                    {"text": re.sub(r"^[•\-–*\d.)\s]+", "", ln).strip(), "skill_tags": []}
+                )
+            continue
+        if "|" in ln:
+            left, right = (p.strip() for p in ln.split("|", 1))
+            if _DATE_RE.search(right) and not _DATE_RE.search(left):
+                if current is not None:
+                    current["location"] = current["location"] or left
+                    current["dates"] = current["dates"] or right
+                continue
+            current = {"company": right, "role": left, "location": "",
+                       "dates": "", "context": "", "bullets": []}
+            experiences.append(current)
+            continue
+        if _DATE_ONLY_RE.fullmatch(ln):
+            if current is not None and not current["dates"]:
+                current["dates"] = ln
+            continue
+        if current is not None:
+            current["context"] = (current["context"] + " " + ln).strip()
+    return experiences
+
+
+def _heuristic_education(text: str) -> list[dict]:
+    """Each non-empty education line becomes one entry. Education only feeds
+    text similarity, so a light touch is enough."""
+    if not text:
+        return []
+    out: list[dict] = []
+    for line in text.splitlines():
+        line = line.strip().strip("•-–*").strip()
+        if line and len(line) >= 3:
+            out.append({"degree": line, "school": "", "location": "", "dates": ""})
+    return out
+
+
+def _heuristic_title(text: str, sections: dict[str, str]) -> str:
+    """Best-effort title from the header: the first short, non-contact line
+    after the name. Empty when nothing looks safe."""
+    header = sections.get("header") or text[:1200]
+    for ln in (l.strip() for l in header.splitlines() if l.strip()):
+        if EMAIL_RE.search(ln) or URL_RE.search(ln) or PHONE_RE.search(ln) or "|" in ln:
+            continue
+        words = [w for w in ln.split() if any(c.isalnum() for c in w)]
+        if 2 <= len(words) <= 10 and not ln.isupper() and not any(c.isdigit() for c in ln):
+            return ln
+    return ""
+
+
 def _parse_heuristic(text: str) -> dict:
+    sections = _split_sections(text)
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     email = EMAIL_RE.search(text)
     phone = PHONE_RE.search(text)
@@ -284,19 +403,20 @@ def _parse_heuristic(text: str) -> dict:
         if 1 < len(words) <= 4 and all(w[0].isalpha() for w in words if w):
             name = ln
             break
-    summary = " ".join(lines[:20])[:900]
+    summary = (sections.get("summary") or " ".join(lines[:20]))[:900]
     return {
         "profile": {
             "name": name,
+            "title": _heuristic_title(text, sections),
             "email": email.group(0) if email else "",
             "phone": phone.group(0).strip() if phone else "",
             "linkedin": linkedin.group(0) if linkedin else "",
             "portfolio": portfolio,
             "summary": summary,
         },
-        "experiences": [],
-        "education": [],
+        "experiences": _heuristic_experiences(sections.get("experience", "")),
+        "education": _heuristic_education(sections.get("education", "")),
         "certifications": [],
-        "skills": [],
+        "skills": _heuristic_skills(sections.get("skills", "")),
         "languages": [],
     }
