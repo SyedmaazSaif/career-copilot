@@ -1,30 +1,29 @@
 /* career-copilot — command-station UI.
    Palette and type roles fixed by the design system. */
 :root {
-  --ink: #14213a;
-  --steel: #edeff3;
-  /* Glass surfaces: translucent white frosted over the blue gradient. */
-  --panel: rgba(255, 255, 255, 0.55);
-  --panel-strong: rgba(255, 255, 255, 0.72); /* nested cards / forms */
+  /* Apple-style palette: system grays, SF-style system font stack. */
+  --ink: #1d1d1f;
+  --steel: #f5f5f7;
+  --panel: #ffffff;
+  --panel-strong: #f5f5f7; /* nested / inset surfaces */
   --panel-solid: #ffffff;
-  --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-blur: blur(18px) saturate(160%);
-  --petrol: #2563eb; /* accent (was teal, now blue to match the gradient) */
-  --amber: #e8a33d;
-  --rose: #c4566a;
-  --slate-muted: #5a6b86;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-blur: none;
+  --petrol: #0071e3; /* Apple system blue */
+  --amber: #ff9f0a;  /* Apple orange */
+  --rose: #ff3b30;   /* Apple red */
+  --slate-muted: #6e6e73; /* Apple secondary text gray */
 
-  --line: rgba(30, 58, 138, 0.14);
-  --line-strong: rgba(30, 58, 138, 0.24);
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.16);
 
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
 
-  --radius: 12px;
+  --radius: 10px;
   --radius-sm: 8px;
-  --shadow: 0 6px 28px rgba(30, 58, 138, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -37,12 +36,7 @@ body,
 }
 body {
   margin: 0;
-  /* Blue gradient backdrop for the glassmorphism surfaces above it. */
-  background:
-    radial-gradient(1100px 620px at 88% -12%, rgba(59, 130, 246, 0.45), transparent 62%),
-    radial-gradient(900px 520px at -10% 110%, rgba(99, 102, 241, 0.35), transparent 60%),
-    linear-gradient(150deg, #eef4ff 0%, #d3e2fb 30%, #a9c7f5 64%, #7aa6ef 100%);
-  background-attachment: fixed;
+  background: var(--steel);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 14.5px;
@@ -69,11 +63,9 @@ body {
   height: 100%;
 }
 .sidebar {
-  background: rgba(17, 28, 58, 0.68);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-right: 1px solid rgba(255, 255, 255, 0.14);
-  color: #dbe1e8;
+  background: rgba(245, 245, 247, 0.9);
+  border-right: 1px solid var(--line);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   padding: 22px 16px;
@@ -90,14 +82,14 @@ body {
   height: 14px;
   border-radius: 4px;
   background: var(--petrol);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.18);
   flex: none;
 }
 .brand-name {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
-  color: #fff;
+  color: var(--ink);
   letter-spacing: -0.01em;
 }
 .nav {
@@ -111,7 +103,7 @@ body {
   justify-content: space-between;
   background: transparent;
   border: none;
-  color: #b9c2cd;
+  color: var(--slate-muted);
   font-family: var(--font-body);
   font-size: 14.5px;
   text-align: left;
@@ -120,12 +112,13 @@ body {
   cursor: pointer;
 }
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
 }
 .nav-item.active {
-  background: var(--petrol);
-  color: #fff;
+  background: rgba(0, 113, 227, 0.14);
+  color: var(--petrol);
+  font-weight: 600;
 }
 .nav-soon {
   font-family: var(--font-mono);
@@ -525,8 +518,8 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--petrol);
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: rgba(0, 113, 227, 0.08);
+  border: 1px solid rgba(0, 113, 227, 0.2);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -545,10 +538,10 @@ button:focus-visible {
 
 /* ---------- Banners ---------- */
 .banner {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(0, 113, 227, 0.12);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(37, 99, 235, 0.32);
+  border: 1px solid rgba(0, 113, 227, 0.32);
   color: #1e40af;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
@@ -569,10 +562,10 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: rgba(37, 99, 235, 0.16);
+  background: rgba(0, 113, 227, 0.16);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(37, 99, 235, 0.4);
+  border: 1px solid rgba(0, 113, 227, 0.4);
   color: #1e3a8a;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
@@ -674,7 +667,7 @@ button:focus-visible {
 .scan-spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(37, 99, 235, 0.3);
+  border: 2px solid rgba(0, 113, 227, 0.3);
   border-top-color: var(--petrol);
   border-radius: 50%;
   flex: none;
@@ -710,7 +703,7 @@ button:focus-visible {
   font-size: 12.5px;
 }
 .btn-ghost:hover {
-  background: rgba(37, 99, 235, 0.07);
+  background: rgba(0, 113, 227, 0.07);
   filter: none;
 }
 .btn-ghost-warn {
@@ -722,17 +715,11 @@ button:focus-visible {
 }
 .kanban {
   display: grid;
-  grid-template-columns: repeat(6, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
   gap: 12px;
   align-items: start;
-  overflow-x: auto;
-  padding-bottom: 8px;
-}
-/* Focus mode: only Sourced + Applied, given the full width so daily triage
-   isn't a cramped strip inside a 6-column scroll. */
-.kanban-focus {
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
   overflow-x: visible;
+  padding-bottom: 8px;
 }
 .kan-col {
   background: rgba(255, 255, 255, 0.3);
@@ -751,7 +738,7 @@ button:focus-visible {
 }
 .kan-col.drop-target {
   border-color: var(--petrol);
-  background: rgba(37, 99, 235, 0.07);
+  background: rgba(0, 113, 227, 0.07);
 }
 .kan-head {
   display: flex;
@@ -779,8 +766,8 @@ button:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--petrol);
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  background: rgba(0, 113, 227, 0.1);
+  border: 1px solid rgba(0, 113, 227, 0.3);
   border-radius: 4px;
   padding: 0 5px;
   margin-right: 6px;
@@ -803,7 +790,7 @@ button:focus-visible {
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   cursor: grab;
-  box-shadow: 0 2px 10px rgba(30, 58, 138, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   user-select: none;
   touch-action: none;
 }
@@ -923,8 +910,8 @@ body.dragging-cursor * {
   font-size: 12px;
   font-weight: 600;
   color: #1e3a8a;
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(0, 113, 227, 0.1);
+  border: 1px solid rgba(0, 113, 227, 0.25);
   border-radius: 5px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -941,7 +928,7 @@ body.dragging-cursor * {
 }
 .match-tally.full {
   color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.14);
+  background: rgba(0, 113, 227, 0.14);
 }
 .filter-score {
   display: flex;
@@ -997,7 +984,7 @@ body.dragging-cursor * {
   cursor: pointer;
 }
 .jobs-table tbody tr:hover {
-  background: rgba(37, 99, 235, 0.04);
+  background: rgba(0, 113, 227, 0.04);
 }
 .col-meter {
   width: 56px;
@@ -1025,13 +1012,21 @@ body.dragging-cursor * {
   border: 1px solid var(--line-strong);
   white-space: nowrap;
 }
+.applied-toggle {
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.applied-toggle:hover {
+  filter: brightness(0.96);
+}
 .stage-sourced {
   color: var(--slate-muted);
 }
 .stage-applied {
   color: var(--petrol);
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(0, 113, 227, 0.4);
+  background: rgba(0, 113, 227, 0.07);
 }
 .stage-screening,
 .stage-interview {
@@ -1416,15 +1411,15 @@ body.dragging-cursor * {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(0, 113, 227, 0.08);
+  border: 1px solid rgba(0, 113, 227, 0.25);
   color: var(--ink);
   border-radius: 20px;
   padding: 4px 6px 4px 12px;
   font-size: 13px;
 }
 .term-remove {
-  background: rgba(37, 99, 235, 0.15);
+  background: rgba(0, 113, 227, 0.15);
   border: none;
   color: var(--petrol);
   border-radius: 50%;
@@ -1461,7 +1456,7 @@ body.dragging-cursor * {
 }
 .board-toggle.on {
   border-color: var(--petrol);
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(0, 113, 227, 0.05);
 }
 .board-toggle input {
   width: auto;
@@ -1502,8 +1497,8 @@ body.dragging-cursor * {
   margin-bottom: 18px;
 }
 .ai-status.on {
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.05);
+  border-color: rgba(0, 113, 227, 0.4);
+  background: rgba(0, 113, 227, 0.05);
 }
 .ai-status .status-dot {
   margin-top: 4px;
@@ -1584,8 +1579,8 @@ body.dragging-cursor * {
   cursor: pointer;
 }
 .hw-option.picked {
-  border-color: rgba(37, 99, 235, 0.5);
-  background: rgba(37, 99, 235, 0.05);
+  border-color: rgba(0, 113, 227, 0.5);
+  background: rgba(0, 113, 227, 0.05);
 }
 .hw-option.unfit {
   opacity: 0.62;
@@ -1621,7 +1616,7 @@ body.dragging-cursor * {
   letter-spacing: 0.03em;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(0, 113, 227, 0.12);
   color: var(--petrol);
 }
 .hw-badge.warn {
@@ -1708,7 +1703,7 @@ body.dragging-cursor * {
   font-size: 12.5px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(0, 113, 227, 0.08);
   color: var(--petrol);
 }
 .setup-message.error {
@@ -1742,8 +1737,8 @@ body.dragging-cursor * {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--petrol);
-  background: rgba(37, 99, 235, 0.09);
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: rgba(0, 113, 227, 0.09);
+  border: 1px solid rgba(0, 113, 227, 0.22);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -1760,8 +1755,8 @@ body.dragging-cursor * {
 }
 .work-remote {
   color: var(--petrol);
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(0, 113, 227, 0.4);
+  background: rgba(0, 113, 227, 0.07);
 }
 .work-hybrid {
   color: var(--amber);
@@ -1835,8 +1830,8 @@ body.dragging-cursor * {
 }
 .cv-badge.ai {
   color: var(--petrol);
-  border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(0, 113, 227, 0.3);
+  background: rgba(0, 113, 227, 0.07);
 }
 .cv-verified {
   font-size: 11px;
@@ -1974,6 +1969,21 @@ body.dragging-cursor * {
   right: 4px;
   z-index: 1;
 }
+.card-mark-applied {
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--petrol);
+  background: rgba(0, 113, 227, 0.07);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+.card-mark-applied:hover {
+  background: rgba(0, 113, 227, 0.14);
+  filter: none;
+}
 
 /* A link that lives inside a sentence (e.g. "12 new" in the scan banner). */
 .link-inline {
@@ -1989,4 +1999,79 @@ body.dragging-cursor * {
 .link-inline:hover {
   filter: none;
   text-decoration: none;
+}
+
+
+/* ================= Categories, explanations and staleness ================= */
+
+/* A category has three states, so it needs three looks: normal (shown because
+   nothing is pinned), pinned (the only kinds of work on screen), and excluded
+   (never scanned at all). The excluded state has to read as "off" at a glance,
+   because it is the one that silently stops jobs arriving. */
+.category-toggle {
+  justify-content: space-between;
+  text-align: left;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+}
+.category-toggle.excluded {
+  border-color: var(--line-strong);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 5px,
+    rgba(148, 163, 184, 0.13) 5px,
+    rgba(148, 163, 184, 0.13) 10px
+  );
+  color: var(--slate-muted);
+  text-decoration: line-through;
+}
+.category-mark {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--petrol);
+  text-decoration: none;
+}
+.category-toggle.excluded .category-mark {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--slate-muted);
+}
+
+/* The explanation the user actually reads. It leads the modal, above the
+   numeric breakdown, because a sentence grounded in their own résumé is what
+   earns trust -- a score on its own does not. */
+.why-match {
+  background: rgba(0, 113, 227, 0.04);
+  border: 1px solid rgba(0, 113, 227, 0.16);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+.why-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.why-list li {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.why-stale {
+  color: var(--amber);
+}
+.why-closed {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--slate-muted);
+}
+.score-provisional {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--amber);
 }
