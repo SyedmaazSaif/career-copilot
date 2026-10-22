@@ -1,29 +1,27 @@
-/* career-copilot — command-station UI.
-   Palette and type roles fixed by the design system. */
+/* career-copilot — cyberpunk UI. Neon on near-black. */
 :root {
-  /* Apple-style palette: system grays, SF-style system font stack. */
-  --ink: #1d1d1f;
-  --steel: #f5f5f7;
-  --panel: #ffffff;
-  --panel-strong: #f5f5f7; /* nested / inset surfaces */
-  --panel-solid: #ffffff;
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --ink: #d9f2ff;          /* primary text: pale cyan-white */
+  --steel: #06070d;        /* page background */
+  --panel: #0c0f1a;        /* cards */
+  --panel-strong: #121627; /* nested / inset surfaces */
+  --panel-solid: #0c0f1a;
+  --glass-border: rgba(0, 229, 255, 0.16);
   --glass-blur: none;
-  --petrol: #0071e3; /* Apple system blue */
-  --amber: #ff9f0a;  /* Apple orange */
-  --rose: #ff3b30;   /* Apple red */
-  --slate-muted: #6e6e73; /* Apple secondary text gray */
+  --petrol: #00e5ff;       /* neon cyan */
+  --amber: #ffe600;        /* neon yellow */
+  --rose: #ff3355;         /* neon red */
+  --slate-muted: #7d8ca8;  /* secondary text */
 
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.16);
+  --line: rgba(0, 229, 255, 0.14);
+  --line-strong: rgba(0, 229, 255, 0.32);
 
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, system-ui, sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
-  --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+  --font-display: "Orbitron", "Rajdhani", "JetBrains Mono", ui-monospace, monospace;
+  --font-body: "Rajdhani", "Inter", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
 
   --radius: 10px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --radius-sm: 6px;
+  --shadow: 0 0 0 1px rgba(0, 229, 255, 0.10), 0 0 20px rgba(0, 229, 255, 0.08);
 }
 
 * {
@@ -36,10 +34,17 @@ body,
 }
 body {
   margin: 0;
-  background: var(--steel);
+  background:
+    linear-gradient(rgba(0, 229, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(1100px 640px at 88% -12%, rgba(0, 229, 255, 0.10), transparent 60%),
+    radial-gradient(900px 560px at -10% 110%, rgba(255, 42, 109, 0.10), transparent 60%),
+    var(--steel);
+  background-size: 34px 34px, 34px 34px, auto, auto, auto;
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -63,7 +68,7 @@ body {
   height: 100%;
 }
 .sidebar {
-  background: rgba(245, 245, 247, 0.9);
+  background: rgba(8, 10, 20, 0.85);
   border-right: 1px solid var(--line);
   color: var(--ink);
   display: flex;
@@ -80,17 +85,19 @@ body {
 .brand-mark {
   width: 14px;
   height: 14px;
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--petrol);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.18);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
   flex: none;
 }
 .brand-name {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--ink);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--petrol);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
 }
 .nav {
   display: flex;
@@ -112,13 +119,15 @@ body {
   cursor: pointer;
 }
 .nav-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--ink);
 }
 .nav-item.active {
-  background: rgba(0, 113, 227, 0.14);
+  background: rgba(0, 229, 255, 0.12);
   color: var(--petrol);
   font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(0, 229, 255, 0.35);
 }
 .nav-soon {
   font-family: var(--font-mono);
@@ -310,7 +319,7 @@ select {
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(10, 13, 26, 0.85);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--line-strong);
@@ -329,7 +338,7 @@ select:focus {
   outline: 2px solid var(--petrol);
   outline-offset: -1px;
   border-color: var(--petrol);
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(12, 15, 26, 0.95);
 }
 
 /* ---------- Buttons ---------- */
@@ -342,11 +351,12 @@ button {
 /* Primary action: any button without its own class. Classed buttons
    (.btn-secondary, .tab, .stage-choice, .icon-btn, …) style themselves. */
 button:not([class]) {
-  color: #fff;
+  color: #041018;
   background: var(--petrol);
   border: 1px solid var(--petrol);
   border-radius: var(--radius-sm);
   padding: 8px 15px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
 }
 button:hover {
   filter: brightness(1.04);
@@ -362,7 +372,7 @@ button:focus-visible {
 }
 .btn-secondary {
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(17, 21, 39, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--glass-border);
@@ -370,7 +380,7 @@ button:focus-visible {
   padding: 8px 15px;
 }
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(17, 21, 39, 0.90);
   filter: none;
 }
 .link-btn {
@@ -575,7 +585,7 @@ button:focus-visible {
 .update-banner code {
   font-family: var(--font-mono);
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(17, 21, 39, 0.75);
   border-radius: 4px;
   padding: 1px 5px;
 }
@@ -722,7 +732,7 @@ button:focus-visible {
   padding-bottom: 8px;
 }
 .kan-col {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(10, 13, 26, 0.55);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -783,7 +793,7 @@ button:focus-visible {
   padding-right: 2px;
 }
 .job-card {
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(12, 15, 26, 0.90);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--glass-border);
@@ -807,7 +817,7 @@ body.dragging-cursor * {
 }
 .job-card.stale {
   opacity: 0.62;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(12, 15, 26, 0.60);
 }
 .job-card.stale:hover {
   opacity: 1;
@@ -1035,7 +1045,7 @@ body.dragging-cursor * {
   background: rgba(232, 163, 61, 0.1);
 }
 .stage-offer {
-  color: #fff;
+  color: #041018;
   background: var(--petrol);
   border-color: var(--petrol);
 }
@@ -1200,7 +1210,7 @@ body.dragging-cursor * {
   z-index: 50;
 }
 .modal {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(12, 15, 26, 0.95);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
@@ -1272,7 +1282,7 @@ body.dragging-cursor * {
 .stage-choice.active {
   background: var(--petrol);
   border-color: var(--petrol);
-  color: #fff;
+  color: #041018;
 }
 .flags-box {
   background: rgba(196, 86, 106, 0.06);
@@ -1369,7 +1379,7 @@ body.dragging-cursor * {
 }
 .btn-apply {
   background: var(--petrol);
-  color: #fff;
+  color: #041018;
   text-decoration: none;
   border-radius: var(--radius-sm);
   padding: 9px 16px;
@@ -1684,7 +1694,7 @@ body.dragging-cursor * {
 .setup-step.done .setup-icon {
   background: var(--petrol);
   border-color: var(--petrol);
-  color: #fff;
+  color: #041018;
 }
 .setup-step.running .setup-icon {
   border-color: var(--petrol);
@@ -1901,7 +1911,7 @@ body.dragging-cursor * {
   white-space: nowrap;
   font-size: 12px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(17, 21, 39, 0.75);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 6px 9px;
