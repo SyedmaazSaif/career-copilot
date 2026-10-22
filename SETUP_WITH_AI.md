@@ -151,7 +151,7 @@ The Settings tab always shows whether the local AI is on and ready.
 ## Using it day to day
 
 - To open the app again later:
-  - **Windows:** double-click **`career-copilot.vbs`** in the project folder,
+  - **Windows:** double-click **`Start Career Copilot.vbs`** in the project folder,
     or the **career-copilot** shortcut the installer put on your Desktop.
   - **macOS:** open **Career Copilot** from Launchpad, or double-click
     **`Career Copilot.app`** in the project folder.

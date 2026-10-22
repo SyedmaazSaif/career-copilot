@@ -44,7 +44,7 @@ That is the whole install. It puts the app in `C:\Users\<you>\career-copilot`
 and creates a **career-copilot** shortcut on your Desktop.
 
 **Later launches:** double-click the **career-copilot** shortcut on your
-Desktop, or `career-copilot.vbs` in the app folder. Nothing appears except the
+Desktop, or `Start Career Copilot.vbs` in the app folder. Nothing appears except the
 app window — no console, no PowerShell.
 
 ---
@@ -119,7 +119,7 @@ window is the only thing that appears.
 
 | | Start it with | Stop it with |
 |---|---|---|
-| **Windows** | The **career-copilot** shortcut on your Desktop, or `career-copilot.vbs` in the app folder | Close the app window |
+| **Windows** | The **career-copilot** shortcut on your Desktop, or `Start Career Copilot.vbs` in the app folder | Close the app window |
 | **macOS** | **Career Copilot** in Launchpad or Spotlight, or `Career Copilot.app` in the `career-copilot` folder | Close the app window |
 
 Closing the window shuts down the background pieces too — the local web server
@@ -213,7 +213,7 @@ the installer again. It picks up from where it left off and will not lose
 anything.
 
 **The install finished but no window opened** — start it by hand: open the
-`career-copilot` folder and double-click `career-copilot.vbs` (Windows) or
+`career-copilot` folder and double-click `Start Career Copilot.vbs` (Windows) or
 `Career Copilot.app` (macOS). If still nothing happens, the reason is in the
 log — see below.
 
@@ -230,7 +230,7 @@ stopped it.
 **A Terminal or PowerShell window opens when you start the app** — you are
 launching it the old way. On macOS use `Career Copilot.app`, not the retired
 `career-copilot.command`; on Windows use the Desktop shortcut or
-`career-copilot.vbs`, not the setup file. Re-running setup replaces the old
+`Start Career Copilot.vbs`, not the setup file. Re-running setup replaces the old
 launchers with the new ones.
 
 **Anything else** — open an issue with what the window printed.

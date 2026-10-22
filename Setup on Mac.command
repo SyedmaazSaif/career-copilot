@@ -198,13 +198,22 @@ cat > "$APP/Contents/MacOS/career-copilot" <<LAUNCHER
 # Starts career-copilot with no Terminal window. Output goes to
 # ~/.career-copilot/logs/app.log. Close the app window to stop it.
 #
-# This hands off and exits straight away. An earlier version stayed alive for
-# the whole session, and macOS treats a bundle whose executable never settles
-# as a hung app, refusing to open it.
+# Self-healing: if the app was never set up (or its install broke), it hands
+# off to the setup script, which installs what is missing and starts the app.
+# A normal start shows nothing but the app's own window.
 cd "$PWD" || exit 1
 
 LOG_DIR="\$HOME/.career-copilot/logs"
 mkdir -p "\$LOG_DIR"
+
+if [ ! -d "backend/.venv" ] || [ ! -f "scripts/start.js" ]; then
+  if [ -f "Setup on Mac.command" ]; then
+    open "Setup on Mac.command"
+  else
+    osascript -e 'display alert "Career Copilot" message "The app is incomplete. Download it again from the website." as critical' >/dev/null 2>&1
+  fi
+  exit 0
+fi
 
 NODE="$NODE_BIN"
 if [ ! -x "\$NODE" ]; then
@@ -214,8 +223,12 @@ if [ ! -x "\$NODE" ]; then
   done
 fi
 if [ ! -x "\$NODE" ]; then
-  osascript -e 'display alert "Career Copilot" message "Node.js was not found. Run \"Setup on Mac.command\" once to repair the install." as critical' >/dev/null 2>&1
-  exit 1
+  if [ -f "Setup on Mac.command" ]; then
+    open "Setup on Mac.command"
+  else
+    osascript -e 'display alert "Career Copilot" message "Node.js was not found. Run \"Setup on Mac.command\" once to repair the install." as critical' >/dev/null 2>&1
+  fi
+  exit 0
 fi
 
 nohup "\$NODE" scripts/start.js >>"\$LOG_DIR/app.log" 2>&1 &
