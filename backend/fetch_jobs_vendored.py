@@ -21,7 +21,7 @@ import json
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -100,6 +100,17 @@ def fetch_remotive(q: str) -> list:
         return []
 
 
+def _arbeitnow_posted(created_at) -> str:
+    """Arbeitnow's created_at is Unix seconds; every other board here gives a
+    date string. Convert it so age-based scoring and sorting still work."""
+    if not created_at:
+        return ""
+    try:
+        return datetime.fromtimestamp(int(created_at), tz=timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError):
+        return ""
+
+
 # ─── Source 2: Arbeitnow ───────────────────────────────────────────────
 def fetch_arbeitnow(q: str) -> list:
     try:
@@ -117,7 +128,10 @@ def fetch_arbeitnow(q: str) -> list:
             "location": j.get("location") or "Remote",
             "url": j.get("url"),
             "description": j.get("description", ""),
-            "posted": j.get("created_at", ""),
+            # Arbeitnow's created_at is a Unix timestamp (int), not a date
+            # string like every other board here -- convert it or ingest's
+            # date parser chokes on it.
+            "posted": _arbeitnow_posted(j.get("created_at")),
             "tags": j.get("tags", []),
         }) for j in jobs
             if ql in (j.get("title", "") + " " + j.get("description", "")).lower()]

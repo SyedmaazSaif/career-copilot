@@ -12,7 +12,8 @@ from ..company_site import find_company_site
 from ..custom_scrapers import fetch_single_job
 from ..db import get_db
 from ..ingest import dedupe_key, ingest_jobs
-from ..models import STAGES, DismissedJob, Job, ScrapeRun
+from ..matching import SCORE_VERSION, build_profile, score_job
+from ..models import STAGES, DismissedJob, Job, ScrapeRun, SearchConfig
 from ..schemas import (
     AddJobByUrl,
     CompanySiteOut,
@@ -22,7 +23,7 @@ from ..schemas import (
     ScanStatus,
     ScrapeRunOut,
 )
-from ..scoring import build_profile_context
+from .. import taxonomy
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -75,8 +76,8 @@ def add_by_url(payload: AddJobByUrl, db: Session = Depends(get_db)):
         raise HTTPException(
             422, "couldn't read a job from that page — it may block scraping"
         )
-    ctx = build_profile_context(db)
-    ingest_jobs(db, [job_dict], ctx)  # scores, classifies, dedupes, inserts
+    profile = build_profile(db)
+    ingest_jobs(db, [job_dict], profile)  # scores, classifies, dedupes, inserts
     created = db.query(Job).filter(Job.url == url).order_by(Job.id.desc()).first()
     if created is None:
         raise HTTPException(
@@ -89,9 +90,13 @@ def add_by_url(payload: AddJobByUrl, db: Session = Depends(get_db)):
 
 @router.post("/close-stale")
 def close_stale(db: Session = Depends(get_db)):
-    """Move Sourced jobs that were not seen in the latest completed scan to
-    Closed — i.e. postings that have dropped off the boards and are likely no
-    longer accepting applications. Reversible: the user can drag them back."""
+    """Retire Sourced jobs that the last completed scan did not see.
+
+    The scan does this automatically now; this endpoint is the manual "clean it
+    up right now" version for anyone who does not want to wait for the next
+    one. It applies the same two-miss rule, so pressing it does not close jobs
+    that merely went missing once.
+    """
     latest = (
         db.query(ScrapeRun)
         .filter(ScrapeRun.status == "done")
@@ -100,16 +105,72 @@ def close_stale(db: Session = Depends(get_db)):
     )
     if latest is None or latest.started_at is None:
         return {"closed": 0}
-    cutoff = latest.started_at
-    stale = (
-        db.query(Job)
-        .filter(Job.stage == "Sourced", Job.last_seen_at < cutoff)
-        .all()
-    )
-    for job in stale:
-        job.stage = "Closed"
+
+    counts = latest.source_counts or {}
+    healthy = set(counts.keys())
+    productive = {name for name, n in counts.items() if n > 0}
+    closed = scan_manager.sweep_stale(db, healthy, latest.started_at, productive)
+    return {"closed": closed}
+
+
+@router.post("/reopen-closed")
+def reopen_closed(db: Session = Depends(get_db)):
+    """Undo an automatic close.
+
+    If a run of failing boards -- or an upgrade that made a long-idle list look
+    abandoned -- retired jobs that were actually live, this puts them all back
+    in one go. Jobs the user moved to Closed themselves are left alone.
+    """
+    return {"reopened": scan_manager.reopen_auto_closed(db)}
+
+
+@router.post("/rescore")
+def rescore(db: Session = Depends(get_db)):
+    """Re-run scoring over every stored job against the current profile.
+
+    Scores used to be frozen at the moment a job was inserted, so editing your
+    résumé, your skills or your search settings changed nothing about the list
+    you were looking at. This is called automatically when the profile or the
+    search settings are saved, and is exposed here so it can be triggered by
+    hand too.
+    """
+    profile = build_profile(db)
+    jobs = db.scalars(select(Job)).all()
+    for job in jobs:
+        result = score_job(
+            {
+                "title": job.title,
+                "description": job.description,
+                "location": job.location,
+                "tags": job.tags or [],
+            },
+            profile,
+        )
+        job.score = result["score"]
+        job.score_reason = result["reason"]
+        job.red_flags = result["red_flags"]
+        job.explanations = result["explanations"]
+        job.work_type = result["work_type"]
+        job.employment_type = result["employment_type"]
+        job.score_version = result["score_version"]
+        if not job.category or job.category == "unclassified":
+            job.category = taxonomy.classify(job.title, job.description)
     db.commit()
-    return {"closed": len(stale)}
+    return {"rescored": len(jobs), "score_version": SCORE_VERSION}
+
+
+@router.get("/categories")
+def list_categories(db: Session = Depends(get_db)):
+    """Every category, with how many stored jobs fall in each, so the settings
+    picker can show the user what excluding one would actually cost them."""
+    counts: dict[str, int] = {}
+    for job in db.scalars(select(Job)).all():
+        code = job.category or taxonomy.UNCLASSIFIED
+        counts[code] = counts.get(code, 0) + 1
+    return [
+        {**row, "count": counts.get(row["code"], 0)}
+        for row in taxonomy.category_list()
+    ]
 
 
 @router.get("/runs", response_model=list[ScrapeRunOut])
@@ -201,15 +262,35 @@ def list_jobs(
     red_flags: str | None = Query(None, description="'true' = only jobs with red flags"),
     search: str | None = None,
     new_only: bool = False,
+    category: str | None = Query(None, description="one category code"),
+    all_categories: bool = Query(
+        False, description="ignore the saved category filter"
+    ),
     limit: int = 500,
 ):
     q = select(Job)
     if stage:
         q = q.where(Job.stage == stage)
+    else:
+        # Closed postings are retired, not deleted -- they stay in the
+        # database so the user can see what happened and put one back, but
+        # they must never clutter a plain "show me my jobs" list. A caller
+        # that wants them back can still ask with stage="Closed" explicitly.
+        q = q.where(Job.stage != "Closed")
     if source:
         q = q.where(Job.source == source)
     if min_score:
         q = q.where(Job.score >= min_score)
+    if category:
+        q = q.where(Job.category == category)
+    elif not all_categories:
+        # The saved "show me these kinds of work" filter. Empty means show
+        # everything, which is what someone who has never opened Settings
+        # expects to see.
+        config = db.get(SearchConfig, 1)
+        shown = list(config.shown_categories or []) if config else []
+        if shown:
+            q = q.where(Job.category.in_(shown))
     q = q.order_by(Job.stage, Job.sort_order, Job.score.desc())
     jobs = db.scalars(q).all()
 

@@ -13,7 +13,10 @@ from __future__ import annotations
 
 import platform
 import shutil
-import subprocess
+
+# Every probe below shells out. `proc` is the wrapper that keeps those child
+# processes from opening a console window on Windows.
+from . import proc
 
 # Candidate models, smallest first. `size_gb` is the download; `needs_gb` is the
 # free RAM the weights plus a working context want at run time.
@@ -80,7 +83,7 @@ def _total_ram_gb() -> float | None:
                         return int(line.split()[1]) / (1024 ** 2)  # kB -> GiB
             return None
         if system == "Darwin":
-            out = subprocess.run(
+            out = proc.run(
                 ["sysctl", "-n", "hw.memsize"],
                 capture_output=True, text=True, timeout=5,
             )
@@ -133,7 +136,7 @@ def _gpu() -> tuple[str | None, float | None]:
     system = platform.system()
     try:
         if shutil.which("nvidia-smi"):
-            out = subprocess.run(
+            out = proc.run(
                 ["nvidia-smi", "--query-gpu=name,memory.total",
                  "--format=csv,noheader,nounits"],
                 capture_output=True, text=True, timeout=8,
@@ -147,7 +150,7 @@ def _gpu() -> tuple[str | None, float | None]:
             # real constraint and there is no separate VRAM figure to report.
             return "Apple Silicon (unified memory)", None
         if system == "Windows":
-            out = subprocess.run(
+            out = proc.run(
                 ["powershell", "-NoProfile", "-Command",
                  "(Get-CimInstance Win32_VideoController | "
                  "Select-Object -First 1 Name).Name"],

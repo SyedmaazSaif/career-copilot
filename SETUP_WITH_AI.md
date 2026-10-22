@@ -26,10 +26,10 @@ It is genuinely one step, and it installs Node and Python for you if you do not
 have them:
 
 - **Windows:** download
-  [Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip),
+  [Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip),
   open it, and double-click **Install Career Copilot** inside.
 - **macOS:** download
-  [Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip),
+  [Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip),
   open it, then **right-click** **Install Career Copilot** inside and choose
   **Open** → **Open**. (Right-click, not double-click — macOS blocks a
   downloaded program until you confirm once.)
@@ -60,13 +60,13 @@ folder — Cursor, GitHub Copilot in VS Code, etc. — that works too.)
 
 ## Step 4 — Set it up
 
-**Simplest:** open the `career-copilot` folder and double-click **`setup.bat`**
-(Windows) or **`setup.command`** (macOS). It installs Node and Python if they
+**Simplest:** open the `career-copilot` folder and double-click **`Setup on Windows.bat`**
+or **`Setup on Mac.command`**. It installs Node and Python if they
 are missing, installs everything the app needs, offers the optional local AI,
 and starts the app. The first run takes a few minutes. That's it — skip to
 Step 5.
 
-On macOS, if double-clicking `setup.command` is refused, **right-click it →
+On macOS, if double-clicking `Setup on Mac.command` is refused, **right-click it →
 Open → Open**. macOS blocks downloaded scripts until you say so once.
 
 ### Or: let the AI set it up
@@ -82,8 +82,8 @@ work. It will install everything and start the app.
 You are setting up an app called career-copilot on my computer for me. I am not
 technical, so please do each step yourself and keep me informed in plain words.
 
-1. Run the setup script in this folder: setup.bat on Windows, or
-   `bash setup.command` on macOS. It handles Node, Python, the app's libraries,
+1. Run the setup script in this folder: "Setup on Windows.bat" on Windows,
+   or `bash "Setup on Mac.command"` on macOS. It handles Node, Python, the app's libraries,
    and the optional local AI. If it finishes and the app window opens, stop
    there and tell me.
 2. If it fails, tell me in plain words what failed, then do the steps yourself:
@@ -92,8 +92,8 @@ technical, so please do each step yourself and keep me informed in plain words.
    into it using the venv's own python (backend/.venv/Scripts/python on
    Windows, backend/.venv/bin/python on macOS).
 3. If installing Electron leaves its binary missing (a common Windows hiccup),
-   fix it so `npm run dev` works.
-4. Start the app with: npm run dev
+   fix it so `npm start` works.
+4. Start the app with: npm start
 5. Tell me when the app window opens, then stop and wait. Do not change any of
    the app's code or features — only set it up and run it.
 ```
@@ -153,7 +153,10 @@ The Settings tab always shows whether the local AI is on and ready.
 - To open the app again later:
   - **Windows:** double-click **`career-copilot.vbs`** in the project folder,
     or the **career-copilot** shortcut the installer put on your Desktop.
-  - **macOS:** double-click **`career-copilot.command`** in the project folder.
+  - **macOS:** open **Career Copilot** from Launchpad, or double-click
+    **`Career Copilot.app`** in the project folder.
+  - Neither one opens a Terminal or console window — the app window is all you
+    see. Output goes to `~/.career-copilot/logs/app.log`.
   - **Or** open the folder in your AI assistant and say "start the app".
 - It re-scans automatically once a day while it's open, and any time you hit
   **Scan now**.
@@ -173,8 +176,10 @@ common ones:
   that is Gatekeeper blocking a downloaded script, not a real warning about the
   file. Right-click it → **Open** → **Open**, or use the one-line Terminal
   install in [INSTALL.md](INSTALL.md), which avoids it entirely.
-- **The window doesn't open:** tell your AI "npm run dev didn't open a window,
-  please check the logs and fix it."
+- **The window doesn't open:** the app runs without a console on purpose, so
+  the error is in the log rather than on screen — `~/.career-copilot/logs/app.log`
+  on macOS, `%USERPROFILE%\.career-copilot\logs\app.log` on Windows. Paste the
+  last few lines to your AI assistant.
 - **A scan finds nothing:** some boards rate-limit or block scraping on some
   days. Open Settings, make sure several boards are on, and try again later.
 

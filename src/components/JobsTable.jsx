@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import MatchMeter from "./MatchMeter.jsx";
 
-const STAGES = ["Sourced", "Applied", "Screening", "Interview", "Offer", "Closed"];
+// The app can only ever know whether you've applied, not what happened after
+// -- so the filter offers just those two buckets. Closed jobs are excluded by
+// the backend before they ever reach this table.
 
 // "$120k", "$120k–$150k", or null when unknown.
 function fmtSalary(job) {
@@ -55,6 +57,22 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     }
   }
 
+  async function toggleApplied(e, job) {
+    e.stopPropagation();
+    const nextStage = job.stage === "Sourced" ? "Applied" : "Sourced";
+    setJobs((prev) =>
+      prev ? prev.map((j) => (j.id === job.id ? { ...j, stage: nextStage } : j)) : prev
+    );
+    try {
+      await api.patch(`/api/jobs/${job.id}`, { stage: nextStage });
+    } catch (err) {
+      window.alert(`Could not update that job: ${err.message}`);
+      setJobs((prev) =>
+        prev ? prev.map((j) => (j.id === job.id ? { ...j, stage: job.stage } : j)) : prev
+      );
+    }
+  }
+
   const sources = useMemo(
     () => [...new Set((jobs || []).map((j) => j.source))].sort(),
     [jobs]
@@ -103,7 +121,8 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     const criteria = [];
     if (tokens.length) criteria.push((j) => (matchesRelevance(j, tokens) ? 1 : 0));
     if (loc) criteria.push((j) => ((j.location || "").toLowerCase().includes(loc) ? 1 : 0));
-    if (stage) criteria.push((j) => (j.stage === stage ? 1 : 0));
+    if (stage === "Sourced") criteria.push((j) => (j.stage === "Sourced" ? 1 : 0));
+    if (stage === "Applied") criteria.push((j) => (j.stage !== "Sourced" ? 1 : 0));
     if (source) criteria.push((j) => (j.source === source ? 1 : 0));
     if (workType) criteria.push((j) => (j.work_type === workType ? 1 : 0));
     if (empType) criteria.push((j) => (j.employment_type === empType ? 1 : 0));
@@ -159,12 +178,9 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
           onChange={(e) => setLocationQ(e.target.value)}
         />
         <select value={stage} onChange={(e) => setStage(e.target.value)}>
-          <option value="">All stages</option>
-          {STAGES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          <option value="">Jobs + Applied</option>
+          <option value="Sourced">Not applied</option>
+          <option value="Applied">Applied</option>
         </select>
         <select value={source} onChange={(e) => setSource(e.target.value)}>
           <option value="">All sources</option>
@@ -254,7 +270,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
               <th>Role</th>
               <th>Work</th>
               <th>Pay</th>
-              <th>Stage</th>
+              <th>Applied</th>
               <th>Source</th>
               <th>Flags</th>
               <th className="col-remove"></th>
@@ -300,9 +316,19 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
                     )}
                   </td>
                   <td>
-                    <span className={`stage-pill stage-${job.stage.toLowerCase()}`}>
-                      {job.stage}
-                    </span>
+                    <button
+                      className={`stage-pill applied-toggle stage-${
+                        job.stage === "Sourced" ? "sourced" : "applied"
+                      }`}
+                      title={
+                        job.stage === "Sourced"
+                          ? "Mark as applied"
+                          : "Move back to not applied"
+                      }
+                      onClick={(e) => toggleApplied(e, job)}
+                    >
+                      {job.stage === "Sourced" ? "Not applied" : "Applied"}
+                    </button>
                   </td>
                   <td className="mono cell-src">{job.source}</td>
                   <td>

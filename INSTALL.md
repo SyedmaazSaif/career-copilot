@@ -6,8 +6,15 @@ offers the optional local AI, and starts the app. You are never sent to another
 website to install something by hand.
 
 Jump to: **[Windows](#windows)** · **[macOS](#macos)** ·
+**[Starting the app](#starting-the-app)** ·
 **[First run](#first-time-in-the-app-both-systems)** ·
 **[If something goes wrong](#if-something-goes-wrong)**
+
+> **One window, not two.** The installer shows its progress in a Terminal or
+> console window, because an install that takes minutes in silence looks
+> broken. After that, starting the app opens the app window and nothing else —
+> no Terminal on macOS, no console or PowerShell on Windows. Everything the app
+> would have printed goes to a log file instead.
 
 > **Why two downloads and not one?** Windows and macOS will not run each
 > other's programs, so there is no single file both can open — the same
@@ -19,7 +26,7 @@ Jump to: **[Windows](#windows)** · **[macOS](#macos)** ·
 ## Windows
 
 **1. Download the installer:**
-[**Install-Career-Copilot-Windows.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip)
+[**Install-Career-Copilot-Windows.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip)
 
 **2. Open the downloaded zip** and double-click **Install Career Copilot**
 inside it.
@@ -36,15 +43,16 @@ window opens on its own when it finishes.
 That is the whole install. It puts the app in `C:\Users\<you>\career-copilot`
 and creates a **career-copilot** shortcut on your Desktop.
 
-**Later launches:** double-click the Desktop shortcut, or `career-copilot.vbs`
-in the app folder (it opens the app with no black console window).
+**Later launches:** double-click the **career-copilot** shortcut on your
+Desktop, or `career-copilot.vbs` in the app folder. Nothing appears except the
+app window — no console, no PowerShell.
 
 ---
 
 ## macOS
 
 **1. Download the installer:**
-[**Install-Career-Copilot-Mac.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip)
+[**Install-Career-Copilot-Mac.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip)
 
 **2. Open the downloaded zip** (double-click it, if your browser has not
 already unzipped it). You get a file called **Install Career Copilot**.
@@ -65,19 +73,23 @@ box that appears.
 **4. Wait.** A Terminal window opens and shows each step. The first install
 takes a few minutes. The app window opens on its own when it finishes.
 
-That is the whole install. It puts the app in `~/career-copilot` and creates a
-`career-copilot.command` file inside that folder.
+That is the whole install. It puts the app in `~/career-copilot` and creates
+**Career Copilot.app** inside that folder, plus a copy in Applications.
 
-**Later launches:** double-click **`career-copilot.command`** in the
-`career-copilot` folder in your home directory. No warning this time — the
-installer clears it for you.
+**Later launches:** open **Career Copilot** from Launchpad or Spotlight, or
+double-click **`Career Copilot.app`** in the `career-copilot` folder in your
+home directory. No warning this time — the installer clears it for you — and no
+Terminal window: the app window is the only thing that opens.
+
+Once setup has finished you can close its Terminal window. The app keeps
+running; it is not tied to that window.
 
 ### Or, if you prefer the Terminal
 
 One line, no download and no security warning at all:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash
 ```
 
 ### Why does macOS warn about this at all?
@@ -89,7 +101,7 @@ Developer account — there is no free way around it, for any app.
 
 The warning is about who signed the file, not about what the file does. You can
 read every line of it: it is
-[`install-macos.sh`](https://github.com/SyedmaazSaif/career-copilot/blob/main/install-macos.sh)
+[`install-macos.sh`](https://github.com/SyedmaazSaif/career-copilot/blob/main/installer/install-macos.sh)
 in this repository.
 
 ### Does it need my password?
@@ -97,6 +109,37 @@ in this repository.
 No. Anything missing (Node, Python) is installed into
 `~/.career-copilot/tools`, a folder your own account owns. Nothing is installed
 system-wide, so macOS never asks for an administrator password.
+
+---
+
+## Starting the app
+
+Once it is installed, this is all there is to it — and on both systems the app
+window is the only thing that appears.
+
+| | Start it with | Stop it with |
+|---|---|---|
+| **Windows** | The **career-copilot** shortcut on your Desktop, or `career-copilot.vbs` in the app folder | Close the app window |
+| **macOS** | **Career Copilot** in Launchpad or Spotlight, or `Career Copilot.app` in the `career-copilot` folder | Close the app window |
+
+Closing the window shuts down the background pieces too — the local web server
+and the Python backend — so nothing is left running.
+
+Starting it a second time while it is already open just brings the existing
+window to the front rather than starting a second copy.
+
+**Where the log lives.** Because there is no console, the app writes what it
+would have printed to:
+
+- **Windows:** `%USERPROFILE%\.career-copilot\logs\app.log`
+- **macOS:** `~/.career-copilot/logs/app.log`
+
+That file is the first place to look if the app does not open, and the thing to
+attach to a bug report.
+
+**Running it from a terminal on purpose** (for development): `npm start` in the
+app folder does the same thing as the launchers, and `npm run dev` runs it with
+all the output live in your terminal.
 
 ---
 
@@ -111,7 +154,7 @@ Both installers run the same six steps, and print each one as it goes:
 | 3 | Installs the app's front-end libraries (`npm install`). |
 | 4 | Creates the Python environment for the local backend and installs its libraries. |
 | 5 | **Offers the optional local AI** — see below. |
-| 6 | Creates a launcher for next time, then starts the app. |
+| 6 | Creates a launcher for next time (**Career Copilot.app** on macOS, a Desktop shortcut on Windows), then starts the app in the background. |
 
 Re-running an installer is safe. It updates the app to the latest version and
 keeps your profile, your saved jobs, your settings and your generated CVs.
@@ -171,7 +214,24 @@ anything.
 
 **The install finished but no window opened** — start it by hand: open the
 `career-copilot` folder and double-click `career-copilot.vbs` (Windows) or
-`career-copilot.command` (macOS).
+`Career Copilot.app` (macOS). If still nothing happens, the reason is in the
+log — see below.
+
+**Nothing on screen and you want to know why** — the app writes everything it
+would otherwise print to a log file, because it deliberately runs without a
+console:
+
+- **Windows:** `%USERPROFILE%\.career-copilot\logs\app.log`
+- **macOS:** `~/.career-copilot/logs/app.log`
+
+Open that file (or paste it into an issue) — the last few lines say what
+stopped it.
+
+**A Terminal or PowerShell window opens when you start the app** — you are
+launching it the old way. On macOS use `Career Copilot.app`, not the retired
+`career-copilot.command`; on Windows use the Desktop shortcut or
+`career-copilot.vbs`, not the setup file. Re-running setup replaces the old
+launchers with the new ones.
 
 **Anything else** — open an issue with what the window printed.
 
@@ -193,6 +253,8 @@ computer.
 ## Uninstall
 
 Delete the `career-copilot` folder (in your user folder on both systems), the
-Desktop shortcut on Windows, and `~/.career-copilot` on macOS. If you installed
+Desktop shortcut on Windows, `Career Copilot.app` from Applications on macOS,
+and the `.career-copilot` folder in your user folder (it holds the tools the
+installer downloaded and the log file). If you installed
 the local AI and want that gone too, uninstall Ollama the normal way for your
 system.

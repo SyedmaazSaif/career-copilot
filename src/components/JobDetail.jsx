@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import MatchMeter from "./MatchMeter.jsx";
 
-const STAGES = ["Sourced", "Applied", "Screening", "Interview", "Offer", "Closed"];
-
 // "$120k", "$120k–$150k", or null when unknown.
 function fmtSalary(job) {
   const lo = job.salary_min;
@@ -113,15 +111,18 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
             </header>
 
             <div className="stage-picker">
-              {STAGES.map((s) => (
-                <button
-                  key={s}
-                  className={`stage-choice ${job.stage === s ? "active" : ""}`}
-                  onClick={() => setStage(s)}
-                >
-                  {s}
-                </button>
-              ))}
+              <button
+                className={`stage-choice ${job.stage === "Sourced" ? "active" : ""}`}
+                onClick={() => setStage("Sourced")}
+              >
+                Not applied
+              </button>
+              <button
+                className={`stage-choice ${job.stage !== "Sourced" ? "active" : ""}`}
+                onClick={() => setStage("Applied")}
+              >
+                Applied
+              </button>
             </div>
 
             {job.red_flags.length > 0 && (
@@ -134,6 +135,8 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
                 </ul>
               </div>
             )}
+
+            <WhyThisMatch job={job} />
 
             <ScoreBreakdown reason={job.score_reason} />
 
@@ -414,24 +417,74 @@ function CVSection({ job }) {
   );
 }
 
+// The explanation people actually read. Research on explainable job matching
+// is consistent that a sentence naming the evidence ("matches 6 of your
+// skills, including Kafka") is trusted far more than a number, and that
+// explanations should support a decision rather than argue for one. The bars
+// below are for anyone who wants to audit the arithmetic.
+function WhyThisMatch({ job }) {
+  const lines = job.explanations || [];
+  const stale = isStale(job);
+  if (lines.length === 0 && !stale) return null;
+  return (
+    <section className="detail-section why-match">
+      <h3>Why this match</h3>
+      <ul className="why-list">
+        {lines.map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+        {stale && (
+          <li className="why-stale">
+            Posted {stale} days ago
+            {job.sightings > 2 ? ` and seen in ${job.sightings} scans` : ""} —
+            postings this old are often no longer being filled.
+          </li>
+        )}
+      </ul>
+      {job.closed_reason && (
+        <p className="why-closed">
+          Moved to Closed: {job.closed_reason}. Drag it back if it is still live.
+        </p>
+      )}
+    </section>
+  );
+}
+
+// Days since the board said it was posted, or null when unknown or recent.
+function isStale(job) {
+  if (!job.posted_at) return null;
+  const days = Math.floor((Date.now() - new Date(job.posted_at)) / 86400000);
+  return days >= 30 ? days : null;
+}
+
 function ScoreBreakdown({ reason }) {
   if (!reason || !reason.skills) return null;
-  // "arrangement" replaced the old "remote" key; support both for older jobs.
+  // Older rows were scored under earlier rubrics: "arrangement" replaced
+  // "remote", "role" replaced "title", and "eligibility" replaced "visa".
+  // Support both so a job scanned months ago still renders.
   const arrangement = reason.arrangement || reason.remote;
+  const role = reason.role || reason.title;
+  const eligibility = reason.eligibility || reason.visa;
   const rows = [
-    { key: "skills", label: "Skill overlap", matched: reason.skills.matched },
-    { key: "title", label: "Role fit", note: reason.title.label },
-    { key: "arrangement", label: "Work arrangement", note: arrangement?.label, cell: arrangement },
-    { key: "visa", label: "Visa friendliness", note: reason.visa.label },
-    { key: "domain", label: "Domain overlap", matched: reason.domain.matched },
+    { key: "skills", label: "Skill overlap", cell: reason.skills, matched: reason.skills.matched },
+    { key: "role", label: "Role fit", cell: role, note: role?.label },
+    { key: "text", label: "Résumé similarity", cell: reason.text },
+    { key: "arrangement", label: "Work arrangement", cell: arrangement, note: arrangement?.label },
+    { key: "eligibility", label: "Eligibility", cell: eligibility, note: eligibility?.label },
+    { key: "domain", label: "Domain overlap", cell: reason.domain, matched: reason.domain?.matched },
   ];
   return (
     <section className="detail-section">
-      <h3>Why this score</h3>
+      <h3>Score breakdown</h3>
+      {reason.provisional && (
+        <p className="score-provisional">
+          Provisional — upload your résumé to score against your real skills.
+        </p>
+      )}
       <div className="score-rows">
         {rows.map((r) => {
-          const c = r.cell || reason[r.key];
-          if (!c) return null;
+          const c = r.cell;
+          if (!c || typeof c.score !== "number") return null;
           return (
             <div className="score-row" key={r.key}>
               <span className="score-row-label">{r.label}</span>

@@ -9,6 +9,7 @@
     "url": "https://github.com/SyedmaazSaif/career-copilot.git"
   },
   "scripts": {
+    "start": "node scripts/start.js",
     "dev": "concurrently -k -n vite,electron -c green,cyan \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite",
     "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",

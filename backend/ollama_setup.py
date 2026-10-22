@@ -23,7 +23,7 @@ from pathlib import Path
 
 import requests
 
-from . import hardware, ollama_client
+from . import hardware, ollama_client, proc
 
 OLLAMA_WIN_INSTALLER = "https://ollama.com/download/OllamaSetup.exe"
 OLLAMA_MAC_ZIP = "https://ollama.com/download/Ollama-darwin.zip"
@@ -137,7 +137,7 @@ def _run():
             _set("install", "running", "downloading installer…")
             exe = _download(OLLAMA_WIN_INSTALLER, "OllamaSetup.exe")
             _set("install", "running", "running installer…")
-            subprocess.run([str(exe), "/VERYSILENT", "/NORESTART"], check=False)
+            proc.run([str(exe), "/VERYSILENT", "/NORESTART"], check=False)
             _set("install", "done", "installed")
         elif system == "Darwin":
             _set("install", "running", "downloading Ollama…")
@@ -226,14 +226,14 @@ def _install_macos(archive: Path) -> None:
             existing = base / "Ollama.app"
             if existing.is_dir():
                 shutil.rmtree(existing, ignore_errors=True)
-            subprocess.run(
+            proc.run(
                 ["/usr/bin/ditto", "-x", "-k", str(archive), str(base)],
                 check=True, capture_output=True,
             )
             # We fetched this from ollama.com over TLS moments ago. Leaving the
             # quarantine flag on would only buy a Gatekeeper modal that an
             # unattended setup has nobody to click.
-            subprocess.run(
+            proc.run(
                 ["/usr/bin/xattr", "-dr", "com.apple.quarantine",
                  str(base / "Ollama.app")],
                 check=False, capture_output=True,
@@ -257,18 +257,17 @@ def _start_service() -> None:
             if binary.exists():
                 # Run the server itself rather than opening the menu-bar app:
                 # no window, and no prompt to install the command line tool.
-                subprocess.Popen(
+                proc.popen(
                     [str(binary), "serve"],
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     start_new_session=True,
                 )
             else:
-                subprocess.run(["open", "-a", str(app)], check=False)
+                proc.run(["open", "-a", str(app)], check=False)
         elif shutil.which("ollama"):
-            subprocess.Popen(
+            proc.popen(
                 ["ollama", "serve"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
     except Exception:
         pass

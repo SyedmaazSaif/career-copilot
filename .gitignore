@@ -21,10 +21,22 @@ backend/data/
 # internal build log (not needed by users of the shared project)
 PROGRESS.md
 
-# launcher written by setup.command on the user's own machine, so that it
-# carries no macOS quarantine flag and opens on a double-click
+# Launcher written by setup.command on the user's own machine, so that it
+# carries no macOS quarantine flag and opens on a double-click.
+Career Copilot.app/
+
+# Retired launcher: a .command always opens Terminal, which is exactly what the
+# .app bundle above avoids. Kept here so an older install's copy is not
+# committed by accident.
 career-copilot.command
 
 # os
 .DS_Store
 Thumbs.db
+
+# retired v1 (pre-app) CLI workflow, kept locally for reference only
+_archive-cli-v1/
+
+# AI agent artifacts (working notes, not part of the app)
+.claude/
+career-copilot/

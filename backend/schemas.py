@@ -144,9 +144,13 @@ class JobOut(ORMModel):
     tags: list[str]
     work_type: str
     employment_type: str
+    category: str = "unclassified"
     score: int
     score_reason: dict
     red_flags: list[str]
+    # Plain sentences explaining the score, each traceable to the resume or the
+    # posting. The UI leads with these; the numeric breakdown sits underneath.
+    explanations: list[str] = []
     salary_min: int | None = None
     salary_max: int | None = None
     salary_text: str = ""
@@ -155,8 +159,15 @@ class JobOut(ORMModel):
     notes: str
     first_scanned_at: datetime | None = None
     last_seen_at: datetime | None = None
+    posted_at: datetime | None = None
     applied_at: datetime | None = None
     first_reply_at: datetime | None = None
+    # Staleness: how many scans have seen this posting, how many have missed
+    # it, and -- if it was retired -- when and why.
+    sightings: int = 1
+    missed_scans: int = 0
+    closed_at: datetime | None = None
+    closed_reason: str = ""
     # True when the job was first seen by the most recent completed scan. Set by
     # the router (it needs the run history), not stored on the row.
     is_new: bool = False
@@ -194,6 +205,7 @@ class ScrapeRunOut(ORMModel):
     trigger: str
     total_found: int
     total_new: int
+    total_closed: int = 0
     source_counts: dict
     error: str
 
@@ -209,6 +221,12 @@ class SearchConfigIn(BaseModel):
     enabled_sources: list[str] = []
     preferred_arrangements: list[str] = ["remote", "hybrid", "onsite"]
     locations: list[str] = []
+    # Which kinds of work to show. Empty = show everything.
+    shown_categories: list[str] = []
+    # Which kinds of work to drop at ingest and never store at all.
+    excluded_categories: list[str] = []
+    company_block_list: list[str] = []
+    max_age_days: int = 30
 
 
 class SearchConfigOut(BaseModel):
@@ -217,6 +235,13 @@ class SearchConfigOut(BaseModel):
     all_sources: list[str]
     preferred_arrangements: list[str]
     locations: list[str] = []
+    shown_categories: list[str] = []
+    excluded_categories: list[str] = []
+    company_block_list: list[str] = []
+    max_age_days: int = 30
+    # Every category with a display name, so the settings screen does not have
+    # to keep its own copy of the taxonomy.
+    all_categories: list[dict] = []
 
 
 # ---- Custom sources ----

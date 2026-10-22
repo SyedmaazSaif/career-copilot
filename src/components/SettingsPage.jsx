@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [error, setError] = useState(null);
   const [newTerm, setNewTerm] = useState("");
   const [newLocation, setNewLocation] = useState("");
+  const [newCompany, setNewCompany] = useState("");
 
   useEffect(() => {
     api
@@ -90,6 +91,57 @@ export default function SettingsPage() {
     dirty();
   }
 
+  // Three states per category, because "show it" and "never scan it" are
+  // genuinely different instructions: hiding narrows the view for now,
+  // excluding stops the scanner storing those postings at all.
+  function cycleCategory(code) {
+    setConfig((c) => {
+      const shown = new Set(c.shown_categories || []);
+      const excluded = new Set(c.excluded_categories || []);
+      if (excluded.has(code)) {
+        excluded.delete(code);           // excluded -> default (shown)
+      } else if (shown.has(code)) {
+        shown.delete(code);
+        excluded.add(code);              // only-shown -> excluded
+      } else if (shown.size > 0) {
+        shown.add(code);                 // hidden -> shown
+      } else {
+        // Nothing pinned yet: pinning the first one means "only this".
+        shown.add(code);
+      }
+      return {
+        ...c,
+        shown_categories: [...shown],
+        excluded_categories: [...excluded],
+      };
+    });
+    dirty();
+  }
+
+  function showAllCategories() {
+    setConfig((c) => ({ ...c, shown_categories: [], excluded_categories: [] }));
+    dirty();
+  }
+
+  function addBlockedCompany() {
+    const name = newCompany.trim();
+    if (!name) return;
+    setConfig((c) => ({
+      ...c,
+      company_block_list: [...new Set([...(c.company_block_list || []), name])],
+    }));
+    setNewCompany("");
+    dirty();
+  }
+
+  function removeBlockedCompany(name) {
+    setConfig((c) => ({
+      ...c,
+      company_block_list: (c.company_block_list || []).filter((x) => x !== name),
+    }));
+    dirty();
+  }
+
   async function save() {
     setStatus("saving");
     setError(null);
@@ -99,6 +151,10 @@ export default function SettingsPage() {
         enabled_sources: config.enabled_sources,
         preferred_arrangements: config.preferred_arrangements,
         locations: config.locations || [],
+        shown_categories: config.shown_categories || [],
+        excluded_categories: config.excluded_categories || [],
+        company_block_list: config.company_block_list || [],
+        max_age_days: config.max_age_days ?? 30,
       });
       setConfig(saved);
       setStatus("saved");
@@ -231,6 +287,83 @@ export default function SettingsPage() {
               </label>
             );
           })}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Kinds of work</h2>
+          <button className="btn-secondary btn-sm" onClick={showAllCategories}>
+            Show everything
+          </button>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          Click once to show only that kind of work, again to never scan it, and
+          again to go back to normal. Leave them all alone to see everything.
+        </p>
+        <div className="board-grid">
+          {(config.all_categories || []).map((cat) => {
+            const shown = (config.shown_categories || []).includes(cat.code);
+            const excluded = (config.excluded_categories || []).includes(cat.code);
+            const cls = excluded ? "excluded" : shown ? "on" : "";
+            return (
+              <button
+                key={cat.code}
+                type="button"
+                className={`board-toggle category-toggle ${cls}`}
+                onClick={() => cycleCategory(cat.code)}
+                title={
+                  excluded
+                    ? "Never scanned — click to allow again"
+                    : shown
+                    ? "Shown — click to exclude from scans"
+                    : "Click to show only this"
+                }
+              >
+                <span>{cat.name}</span>
+                {excluded && <span className="category-mark">never</span>}
+                {shown && <span className="category-mark">only</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Companies to never show</h2>
+          <span className="filter-count mono">
+            {(config.company_block_list || []).length} blocked
+          </span>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          Postings from these companies are dropped during the scan. Useful for
+          agencies that repost the same role every week.
+        </p>
+        <div className="term-add">
+          <input
+            value={newCompany}
+            onChange={(e) => setNewCompany(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addBlockedCompany()}
+            placeholder="Company name"
+          />
+          <button className="btn-secondary" onClick={addBlockedCompany}>
+            Block
+          </button>
+        </div>
+        <div className="term-chips">
+          {(config.company_block_list || []).map((name) => (
+            <span key={name} className="term-chip">
+              {name}
+              <button
+                className="term-remove"
+                onClick={() => removeBlockedCompany(name)}
+                aria-label={`Unblock ${name}`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
         </div>
       </div>
 

@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title career-copilot setup
 
 echo =====================================================
 echo    career-copilot  -  setup ^(Windows^)
 echo =====================================================
 echo This installs what the app needs, then starts it.
-echo Leave this window open while you use the app.
+echo You can close this window once setup finishes - the app keeps running.
 echo.
 
 REM ---------- Step 1: Node.js ----------
@@ -30,7 +30,7 @@ if errorlevel 1 (
   where node >nul 2>nul
   if errorlevel 1 (
     echo    Node.js was installed but is not visible yet. Please CLOSE this
-    echo    window and run setup.bat again.
+    echo    window and run "Setup on Windows.bat" again.
     pause & exit /b 0
   )
 )
@@ -54,7 +54,7 @@ if errorlevel 1 (
   where python >nul 2>nul
   if errorlevel 1 (
     echo    Python was installed but is not visible yet. Please CLOSE this
-    echo    window and run setup.bat again.
+    echo    window and run "Setup on Windows.bat" again.
     pause & exit /b 0
   )
 )
@@ -94,12 +94,25 @@ REM ---------- Step 5: the optional local AI ----------
 echo [5/6] Optional local AI...
 call backend\.venv\Scripts\python -m backend.setup_ai
 
-REM ---------- Step 6: launch ----------
+REM ---------- Step 6: a shortcut, then launch ----------
 echo [6/6] Starting career-copilot...
+
+REM The Desktop shortcut points at wscript.exe rather than at the .vbs itself:
+REM if this PC has .vbs associated with cscript ^(or with an editor^), opening
+REM the file directly would show a console window, or the source code.
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'),'career-copilot.lnk')); $s.TargetPath=[IO.Path]::Combine($env:SystemRoot,'System32\wscript.exe'); $s.Arguments='\"%~dp0career-copilot.vbs\"'; $s.WorkingDirectory='%~dp0..'; $s.Description='career-copilot'; $s.Save()" >nul 2>nul
+
 echo.
 echo Setup complete. The app window opens in a moment.
-echo Next time, just double-click career-copilot.vbs to start it.
+echo Next time, use the career-copilot shortcut on your Desktop, or
+echo double-click career-copilot.vbs in the windows folder. Nothing appears
+echo except the app window - if something goes wrong, the log is at
+echo %%USERPROFILE%%\.career-copilot\logs\app.log
 echo.
-call npm run dev
+echo You can close this window now.
+
+REM Start it hidden and detached, so this console is not the app's lifeline.
+start "" wscript.exe "%~dp0career-copilot.vbs"
 
 endlocal
