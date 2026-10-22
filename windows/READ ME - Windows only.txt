@@ -7,10 +7,11 @@ Career Copilot.app.
 On a Windows PC:
 
   First time:        double-click   Setup on Windows.bat
-  Every time after:  double-click   career-copilot.vbs
-                     (setup also puts a career-copilot shortcut on the Desktop)
+                     (installs what's needed, puts a shortcut on the Desktop)
 
-  start.bat              same as career-copilot.vbs, but flashes a console
-                         for a moment. Use the .vbs instead.
-  install-windows.bat    only for putting the app on a PC that does not have
-                         it yet -- it downloads a fresh copy from GitHub.
+  Every time after:  double-click   Start Career Copilot.vbs
+                     or the "Career Copilot" shortcut on your Desktop.
+                     No console window appears.
+
+  install-windows.bat   only for putting the app on a PC that does not have
+                        it yet -- it downloads a fresh copy from GitHub.

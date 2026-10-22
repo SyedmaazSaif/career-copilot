@@ -201,6 +201,17 @@ const REPO_ARCHIVE_URL = `https://github.com/${REPO}/archive/refs/heads/main.zip
 const UPDATE_PATH =
   "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (process.env.PATH || "");
 
+// Files older builds left behind and that no longer belong. A git clone drops
+// them via git; a zip install overlays without deleting, so these are removed
+// explicitly so old shortcuts and habits converge on the single launcher.
+const STALE_FILES = [
+  "start.bat",
+  "setup.bat",
+  "setup.command",
+  "career-copilot.command",
+  "windows/career-copilot.vbs",
+];
+
 function run(cmd, args, opts = {}) {
   const env = { ...process.env, PATH: UPDATE_PATH };
   return new Promise((resolve) => {
@@ -248,6 +259,13 @@ async function updateFromZip() {
     overlay = await run("ditto", [src + "/", APP_ROOT + "/"]);
   }
   if (!overlay.ok) return overlay;
+  for (const rel of STALE_FILES) {
+    try {
+      fs.rmSync(path.join(APP_ROOT, rel), { force: true });
+    } catch {
+      /* a stale file that cannot be removed must not block the update */
+    }
+  }
   return { ok: true };
 }
 

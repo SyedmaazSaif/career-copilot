@@ -20,7 +20,7 @@ ON WINDOWS
   Everything for Windows is inside the  windows  folder.
 
   First time on a PC:    double-click   windows\Setup on Windows.bat
-  To use the app after:  double-click   windows\career-copilot.vbs
+  To use the app after:  double-click   windows\Start Career Copilot.vbs
                          (setup also puts a shortcut on your Desktop)
 
 

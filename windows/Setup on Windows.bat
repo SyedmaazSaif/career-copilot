@@ -101,18 +101,18 @@ REM The Desktop shortcut points at wscript.exe rather than at the .vbs itself:
 REM if this PC has .vbs associated with cscript ^(or with an editor^), opening
 REM the file directly would show a console window, or the source code.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'),'career-copilot.lnk')); $s.TargetPath=[IO.Path]::Combine($env:SystemRoot,'System32\wscript.exe'); $s.Arguments='\"%~dp0career-copilot.vbs\"'; $s.WorkingDirectory='%~dp0..'; $s.Description='career-copilot'; $s.Save()" >nul 2>nul
+  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'),'Career Copilot.lnk')); $s.TargetPath=[IO.Path]::Combine($env:SystemRoot,'System32\wscript.exe'); $s.Arguments='\"%~dp0Start Career Copilot.vbs\"'; $s.WorkingDirectory='%~dp0..'; $s.Description='Career Copilot'; $s.Save()" >nul 2>nul
 
 echo.
 echo Setup complete. The app window opens in a moment.
-echo Next time, use the career-copilot shortcut on your Desktop, or
-echo double-click career-copilot.vbs in the windows folder. Nothing appears
+echo Next time, use the Career Copilot shortcut on your Desktop, or
+echo double-click Start Career Copilot.vbs in the windows folder. Nothing appears
 echo except the app window - if something goes wrong, the log is at
 echo %%USERPROFILE%%\.career-copilot\logs\app.log
 echo.
 echo You can close this window now.
 
 REM Start it hidden and detached, so this console is not the app's lifeline.
-start "" wscript.exe "%~dp0career-copilot.vbs"
+start "" wscript.exe "%~dp0Start Career Copilot.vbs"
 
 endlocal

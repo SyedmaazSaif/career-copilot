@@ -1,21 +1,18 @@
-' career-copilot launcher for Windows.
+' "Start Career Copilot" launcher for Windows.
 '
 ' Double-click this file (or the desktop shortcut that setup creates) and the
 ' app window is the only thing that appears -- no console, no PowerShell, and
 ' nothing to keep out of the way while you work.
 '
-' How: Windows runs a .vbs through wscript.exe, which has no console of its
-' own, and the Run call below uses window style 0 (hidden) with wait = False
-' (do not block). scripts\start.js then starts Vite and Electron directly and
-' sends all their output to:
-'
-'     %USERPROFILE%\.career-copilot\logs\app.log
+' Self-healing: if the app was never set up (or its install broke), it runs
+' "Setup on Windows.bat" first, which installs what is missing and starts the
+' app. A normal start shows nothing but the app's own window.
 '
 ' To stop the app, close its window.
 
 Option Explicit
 
-Dim fso, sh, appDir, nodeExe, startScript
+Dim fso, sh, appDir, nodeExe, startScript, setupBat
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set sh = CreateObject("WScript.Shell")
@@ -23,20 +20,27 @@ Set sh = CreateObject("WScript.Shell")
 appDir = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
 sh.CurrentDirectory = appDir
 startScript = fso.BuildPath(appDir, "scripts\start.js")
+setupBat = fso.BuildPath(appDir, "windows\Setup on Windows.bat")
 
 If Not fso.FileExists(startScript) Then
-  MsgBox "career-copilot is missing scripts\start.js." & vbCrLf & vbCrLf & _
-         "Download the app again, or run ""Setup on Windows.bat"" next to this file.", _
-         vbExclamation, "career-copilot"
-  WScript.Quit 1
+  If fso.FileExists(setupBat) Then
+    sh.Run """" & setupBat & """", 1, True
+  Else
+    MsgBox "Career Copilot is incomplete. Download it again from the website.", _
+           vbExclamation, "Career Copilot"
+  End If
+  WScript.Quit 0
 End If
 
 nodeExe = FindNode()
 If nodeExe = "" Then
-  MsgBox "career-copilot could not find Node.js on this PC." & vbCrLf & vbCrLf & _
-         "Run ""Setup on Windows.bat"" next to this file once -- it installs " & _
-         "everything the app needs -- then start the app again.", vbExclamation, "career-copilot"
-  WScript.Quit 1
+  If fso.FileExists(setupBat) Then
+    sh.Run """" & setupBat & """", 1, True
+  Else
+    MsgBox "Career Copilot could not find Node.js. Download the app again.", _
+           vbExclamation, "Career Copilot"
+  End If
+  WScript.Quit 0
 End If
 
 ' 0 = hidden window, False = do not wait for it to finish.
