@@ -15,6 +15,8 @@ export default function App() {
   const [view, setView] = useState("profile");
   const [online, setOnline] = useState(null); // null=checking, true, false
   const [update, setUpdate] = useState(null); // {current, latest, url} | null
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -40,6 +42,25 @@ export default function App() {
       alive = false;
     };
   }, []);
+
+  async function applyUpdate() {
+    if (!window.copilot?.updateApp) return;
+    setUpdating(true);
+    setUpdateError(null);
+    try {
+      const res = await window.copilot.updateApp();
+      if (!res?.ok) {
+        setUpdating(false);
+        setUpdateError(
+          res?.error || "Update failed. Use 'View release' to download it manually."
+        );
+      }
+      // On success the app reloads itself; keep the button in "Updating…".
+    } catch {
+      setUpdating(false);
+      setUpdateError("Update failed. Use 'View release' to download it manually.");
+    }
+  }
 
   return (
     <div className="shell">
@@ -72,10 +93,19 @@ export default function App() {
           <div className="update-banner">
             <span>
               <strong>Update available</strong> — career-copilot {update.latest} is
-              out (you have {update.current}). Run <code>git pull</code> in the
-              project folder, then restart.
+              out (you have {update.current}).
+              {updateError && <span className="update-error"> {updateError}</span>}
             </span>
             <span className="update-banner-actions">
+              {window.copilot?.updateApp && (
+                <button
+                  className="btn-secondary"
+                  onClick={applyUpdate}
+                  disabled={updating}
+                >
+                  {updating ? "Updating…" : "Update now"}
+                </button>
+              )}
               <button
                 className="link-btn"
                 onClick={() =>
