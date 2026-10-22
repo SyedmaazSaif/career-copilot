@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("copilot", {
   openApply: (url) => ipcRenderer.invoke("open-apply", url),
   // Open a URL in the user's real browser (e.g. the releases page).
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  // One-click update: downloads the new version and refreshes the app.
+  updateApp: () => ipcRenderer.invoke("update-app"),
   // Signals to the renderer that the in-app browser is available.
   hasInAppBrowser: true,
   // Fires once if a newer version is published in the repo. Returns an

@@ -572,11 +572,9 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: rgba(0, 113, 227, 0.16);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(0, 113, 227, 0.4);
-  color: #1e3a8a;
+  background: rgba(0, 229, 255, 0.10);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: var(--ink);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 20px;
@@ -594,6 +592,13 @@ button:focus-visible {
   align-items: center;
   gap: 8px;
   flex: none;
+}
+.update-error {
+  color: var(--rose);
+}
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* ---------- Responsive ---------- */

@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const http = require("http");
 const https = require("https");
@@ -185,6 +187,83 @@ ipcMain.handle("open-apply", (_event, url) => {
 // The apply window's toolbar asks to open the current page in the real browser.
 ipcMain.handle("open-external", (_event, url) => {
   if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+});
+
+// ---------------------------------------------------------------------------
+// One-click update. A development install is a git clone; the distributed
+// install is a zip extract with no .git, so both paths are supported. After
+// the code is replaced we refresh in place (reload the window and restart the
+// backend) rather than relaunching the whole process, which would fight the
+// start.js supervisor that owns the window and the Vite server.
+// ---------------------------------------------------------------------------
+const APP_ROOT = path.join(__dirname, "..");
+const REPO_ARCHIVE_URL = `https://github.com/${REPO}/archive/refs/heads/main.zip`;
+const UPDATE_PATH =
+  "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (process.env.PATH || "");
+
+function run(cmd, args, opts = {}) {
+  const env = { ...process.env, PATH: UPDATE_PATH };
+  return new Promise((resolve) => {
+    execFile(cmd, args, { env, windowsHide: true, ...opts }, (err, stdout, stderr) => {
+      if (err) {
+        const detail = String(stderr || "").trim() || (err && err.message) || `update failed (${cmd})`;
+        resolve({ ok: false, error: detail });
+      } else {
+        resolve({ ok: true, output: String(stdout || "") });
+      }
+    });
+  });
+}
+
+async function updateFromGit() {
+  return run("git", ["pull", "--ff-only"], { cwd: APP_ROOT, timeout: 120000 });
+}
+
+async function updateFromZip() {
+  // The distributed install has no .git, so download the source archive and
+  // overlay it. The archive holds only tracked files, so the user's local data
+  // (database, .env, profile, node_modules, venv) is never in it and survives.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cc-update-"));
+  const zip = path.join(tmp, "app.zip");
+  const dl = await run(
+    "curl", ["-fsSL", "--retry", "3", "-o", zip, REPO_ARCHIVE_URL],
+    { timeout: 300000 }
+  );
+  if (!dl.ok) return dl;
+  const unpacked = path.join(tmp, "unpacked");
+  const isWindows = process.platform === "win32";
+  let un;
+  if (isWindows) {
+    fs.mkdirSync(unpacked, { recursive: true });
+    un = await run("tar", ["-xf", zip, "-C", unpacked]);
+  } else {
+    un = await run("ditto", ["-x", "-k", zip, unpacked]);
+  }
+  if (!un.ok) return un;
+  const src = path.join(unpacked, "career-copilot-main");
+  let overlay;
+  if (isWindows) {
+    overlay = await run("xcopy", [src + "\\*", APP_ROOT + "\\", "/E", "/Y", "/I"]);
+  } else {
+    overlay = await run("ditto", [src + "/", APP_ROOT + "/"]);
+  }
+  if (!overlay.ok) return overlay;
+  return { ok: true };
+}
+
+ipcMain.handle("update-app", async () => {
+  const isGitClone = fs.existsSync(path.join(APP_ROOT, ".git"));
+  const result = isGitClone ? await updateFromGit() : await updateFromZip();
+  if (!result.ok) return result;
+  stopBackend();
+  startBackend();
+  try {
+    await waitForBackend();
+  } catch (err) {
+    console.error("[update] backend did not restart:", err.message);
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
+  return { ok: true };
 });
 
 function createWindow() {
