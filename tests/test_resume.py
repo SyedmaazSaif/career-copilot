@@ -93,5 +93,45 @@ class ParseResumeFallbackTests(unittest.TestCase):
         self.assertTrue(data["experiences"])
 
 
+class ContactFieldTests(unittest.TestCase):
+    def test_portfolio_bare_domain(self):
+        # No https:// scheme, and next to an email + linkedin: the personal site
+        # must win, not the email domain or linkedin.
+        d = r._parse_heuristic(
+            "JOHN DOE\nEngineer\nmyname.com | linkedin.com/in/john\njohn@example.com"
+        )
+        self.assertEqual(d["profile"]["portfolio"], "https://myname.com")
+
+    def test_work_authorization_empty_when_not_stated(self):
+        d = r._parse_heuristic("JOHN DOE\nEngineer\njohn@example.com")
+        self.assertEqual(d["profile"]["work_authorization"], "")
+
+    def test_work_authorization_extracted_when_stated(self):
+        d = r._parse_heuristic("JOHN DOE\nAuthorized to work in the United States\n\nSKILLS\nPython")
+        self.assertEqual(
+            d["profile"]["work_authorization"],
+            "Authorized to work in the United States",
+        )
+
+
+class MergeProfileGuardTests(unittest.TestCase):
+    def test_only_safe_fields_are_merged(self):
+        base = {}
+        r._merge_profile(base, {
+            "name": "Jane",
+            "title": "Nurse",
+            "summary": ["A", "B", "C"],  # a list must be joined, not stringified
+            "work_authorization": "linkedin.com/in/x",  # regex-owned -> ignored
+            "salary_expectation_usd": "USD 50000",  # invented -> ignored
+            "notice_period": "N/A",  # not a resume fact -> ignored
+        })
+        self.assertEqual(base["name"], "Jane")
+        self.assertEqual(base["title"], "Nurse")
+        self.assertEqual(base["summary"], "A B C")
+        self.assertNotIn("work_authorization", base)
+        self.assertNotIn("salary_expectation_usd", base)
+        self.assertNotIn("notice_period", base)
+
+
 if __name__ == "__main__":
     unittest.main()

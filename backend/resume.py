@@ -24,8 +24,32 @@ PHONE_RE = re.compile(r"(\+?\d[\d\s().-]{7,}\d)")
 LINKEDIN_RE = re.compile(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[\w-]+", re.I)
 URL_RE = re.compile(r"https?://[\w.-]+\.[a-z]{2,}(?:/\S*)?", re.I)
 
-# Contact fields the regex pass owns outright; the model never overrides these.
-_EXACT_FIELDS = ("email", "phone", "linkedin", "portfolio")
+# A bare domain is still a portfolio link on a résumé ("syedmaazsaif.com").
+# The negative lookbehind stops it matching the domain half of an email.
+_PORTFOLIO_RE = re.compile(
+    r"(?<![\w@.-])(?:https?://)?(?:[\w-]+\.)+[a-z]{2,}(?:/\S*)?", re.I
+)
+
+# An explicit statement about where the person may work. Regex-owned so the
+# local model can never write contact details into this field.
+_AUTH_RE = re.compile(
+    r"(?:authorized|eligible|entitled) to work (?:in|within)?[^\n|,;]{0,50}"
+    r"|right to work (?:in|within)?[^\n|,;]{0,50}"
+    r"|(?:us|u\.s\.) (?:citizen|person|permanent resident)"
+    r"|green card(?: holder)?"
+    r"|work (?:authorization|permit|status)\s*[:：]\s*[^\n|,;]{0,50}",
+    re.I,
+)
+
+# Fields the regex pass owns outright; the local model never writes them.
+# work_authorization is here because the model once returned a LinkedIn URL for
+# it and invented salary expectations from revenue figures.
+_EXACT_FIELDS = ("email", "phone", "linkedin", "portfolio", "work_authorization")
+
+# The only profile fields the local model may fill from the header. Salary
+# expectations and notice period are the user's own preference, not résumé
+# facts, so they are deliberately absent from this list.
+_AI_PROFILE_FIELDS = ("name", "title", "location", "summary")
 
 
 def extract_text(filename: str, content: bytes) -> str:
@@ -161,10 +185,17 @@ def parse_resume(text: str) -> tuple[dict, bool, str | None]:
 
 
 def _merge_profile(base: dict, incoming: dict) -> None:
-    """Model output fills in the profile, except the fields the regex nailed."""
+    """Model output fills a few safe profile fields, nothing else.
+
+    A local model once wrote a LinkedIn URL into work_authorization and
+    invented salary expectations from revenue figures, so anything outside the
+    whitelist is ignored no matter what the model returns.
+    """
     for key, value in incoming.items():
-        if key in _EXACT_FIELDS and base.get(key):
+        if key not in _AI_PROFILE_FIELDS or key in _EXACT_FIELDS:
             continue
+        if isinstance(value, (list, tuple)):
+            value = " ".join(str(v).strip() for v in value)
         value = str(value).strip() if value is not None else ""
         if value:
             base[key] = value
@@ -185,9 +216,9 @@ def _ai_profile(sections: dict[str, str], text: str) -> tuple[dict | None, str |
     snippet = "\n\n".join(parts) or text[:2000]
     data, err = ollama_client.generate_json(
         "Resume section:\n\n" + snippet[:4000] + "\n\n"
-        "Return JSON with keys: name, title, location, summary, "
-        "work_authorization, notice_period. The title is the person's current "
-        "job title. The summary is at most 3 sentences drawn from the text.",
+        "Return JSON with keys: name, title, location, summary. The title is "
+        "the person's current job title. The summary is at most 3 sentences "
+        "drawn from the text.",
         system="You extract resume header details into JSON. " + _RULES,
         timeout=120,
     )
@@ -382,18 +413,27 @@ def _heuristic_title(text: str, sections: dict[str, str]) -> str:
     return ""
 
 
+def _auth_statement(text: str) -> str:
+    """An explicit work-authorisation claim, or empty when none is made."""
+    m = _AUTH_RE.search(text)
+    return m.group(0).strip() if m else ""
+
+
 def _parse_heuristic(text: str) -> dict:
     sections = _split_sections(text)
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     email = EMAIL_RE.search(text)
     phone = PHONE_RE.search(text)
     linkedin = LINKEDIN_RE.search(text)
-    # portfolio: first url that is not linkedin/email
+    # portfolio: first link that is not linkedin/email. Tolerates a bare
+    # domain ("syedmaazsaif.com") with no scheme.
     portfolio = ""
-    for m in URL_RE.finditer(text):
-        if "linkedin.com" not in m.group(0).lower():
-            portfolio = m.group(0)
-            break
+    for m in _PORTFOLIO_RE.finditer(text):
+        cand = m.group(0).strip()
+        if "linkedin.com" in cand.lower():
+            continue
+        portfolio = cand if "://" in cand else "https://" + cand
+        break
     # name: first line that looks like a name (letters and spaces, 2-4 words)
     name = ""
     for ln in lines[:6]:
@@ -412,6 +452,7 @@ def _parse_heuristic(text: str) -> dict:
             "phone": phone.group(0).strip() if phone else "",
             "linkedin": linkedin.group(0) if linkedin else "",
             "portfolio": portfolio,
+            "work_authorization": _auth_statement(text),
             "summary": summary,
         },
         "experiences": _heuristic_experiences(sections.get("experience", "")),
