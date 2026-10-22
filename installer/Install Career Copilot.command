@@ -14,13 +14,42 @@ URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/install-macos.sh"
 # This file arrived inside a downloaded zip, so macOS flagged it and everything
 # next to it. Clear that here: without it, the launcher created at the end of
 # setup would hit the same "unidentified developer" wall on every start.
-xattr -dr com.apple.quarantine "$(dirname "$0")" >/dev/null 2>&1
+here="$(dirname "$0")"
+xattr -dr com.apple.quarantine "$here" >/dev/null 2>&1
+# A second, separate flag: macOS also stamps files with com.apple.macl (an
+# access list tied to whichever app last touched them) whenever they are
+# copied from another Mac, an external drive, or AirDrop. It is not Gatekeeper
+# and "Open Anyway" does not clear it -- it silently denies access to a file's
+# own owner, admin rights or not. Clearing it here costs nothing on a normal
+# GitHub download and fixes it on a copied one.
+xattr -dr com.apple.macl "$here" >/dev/null 2>&1
 
 printf '\n'
 printf '=====================================================\n'
 printf '   Career Copilot - installer for macOS\n'
 printf '=====================================================\n'
 printf '\n'
+
+# Some Macs (especially a freshly set up one) have not yet granted Terminal
+# permission to work inside Desktop, Documents or Downloads. When that is the
+# case every step below would fail with a confusing "Permission denied" or
+# "You don't have permission" partway through. Catch it here instead, with an
+# explanation a non-technical user can actually act on.
+probe="$here/.cc-write-test-$$"
+if ! { : > "$probe"; } 2>/dev/null; then
+  printf 'macOS is blocking Terminal from working in this folder.\n\n'
+  printf 'This is a privacy setting, not a real permissions problem -- it\n'
+  printf 'happens on new Macs until Terminal is explicitly allowed in.\n\n'
+  printf 'Fix it in one step:\n'
+  printf '  1. Open System Settings -> Privacy & Security -> Files and Folders.\n'
+  printf '  2. Find Terminal, and turn on access to Desktop Folder,\n'
+  printf '     Documents Folder, and Downloads Folder.\n'
+  printf '  3. Come back here and open this file again.\n\n'
+  read -r -p "Press Return to close." _
+  exit 1
+fi
+rm -f "$probe"
+
 printf 'Fetching the installer...\n\n'
 
 script="$(mktemp -t career-copilot-install)" || {

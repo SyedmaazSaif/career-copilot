@@ -1,0 +1,58 @@
+CAREER COPILOT
+==============
+
+ON A MAC
+--------
+
+  To use the app:        double-click   Career Copilot.app
+                         (or open "Career Copilot" from Launchpad)
+
+  First time on this     double-click   Setup on Mac.command
+  Mac, or if the app
+  will not open:
+
+  That is all. Nothing else in this folder is for you to open.
+
+
+ON WINDOWS
+----------
+
+  Everything for Windows is inside the  windows  folder.
+
+  First time on a PC:    double-click   windows\Setup on Windows.bat
+  To use the app after:  double-click   windows\career-copilot.vbs
+                         (setup also puts a shortcut on your Desktop)
+
+
+OPTIONAL
+--------
+
+  Enable auto-push.command   Run once. After that, changes in this folder
+                             are saved to GitHub automatically every 30
+                             minutes, with no window and nothing to click.
+
+
+WHAT THE OTHER FOLDERS ARE      (you never need to open these)
+--------------------------
+
+  backend      the part that scans job boards and scores them
+  src          the screens you see
+  electron     the desktop window itself
+  scripts      helper scripts the app runs for itself
+  docs         how the job matching works, and why
+  installer    the download packages, for putting the app on another computer
+  windows      everything Windows-specific
+
+  _archive-cli-v1   the old command-line version of this tool, from before this
+                     app existed. Kept for reference only; nothing here uses it.
+
+
+A NOTE ABOUT TERMINAL WINDOWS
+-----------------------------
+
+  Career Copilot.app opens the app and nothing else -- no Terminal.
+
+  The two .command files above do show a Terminal while they run. That is
+  deliberate and unavoidable: setup takes a few minutes and silence looks
+  like a hang, and the GitHub sign-in shows you a code you have to read.
+  You only run each of them once.

@@ -1,5 +1,16 @@
 # Career Copilot — Free AI Job Search Assistant & Application Tracker
 
+> ### Which file do I run?
+>
+> | | |
+> |---|---|
+> | **Use the app** | **`Career Copilot.app`** — or find "Career Copilot" in Launchpad. Nothing else opens. |
+> | **First time on this Mac, or something is broken** | **`Setup on Mac.command`** — installs what's missing, then starts the app. Shows a Terminal while it works; that's the progress, and only that once. |
+> | **Push your changes to GitHub automatically** | **`Enable auto-push.command`** — run once, then it happens invisibly every 30 minutes. |
+>
+> On Windows, everything you need is in the **`windows/`** folder.
+> `installer/` holds the download packages and is not something you run.
+
 **Career Copilot is a free job search app for job seekers.** It runs
 your whole job hunt from one desktop window: it scans job boards daily, scores
 every role against your resume, generates tailored ATS-friendly CVs, and tracks
@@ -14,6 +25,11 @@ create.** Your data never leaves your machine.
 **Keywords:** job search, job hunt, job application tracker, resume builder, CV
 generator, ATS resume, AI job search assistant, remote jobs, applicant tracking
 system, job board aggregator.
+
+> **How does it decide what's relevant?** Everything is matched against the
+> résumé you upload — there are no built-in assumptions about your industry.
+> **[docs/MATCHING.md](docs/MATCHING.md)** explains the scoring, the research
+> behind it, and how stale postings are retired.
 
 > **Just want to install it?** Jump to **[Install](#install)** below, or see
 > **[INSTALL.md](INSTALL.md)** for the same thing with every step spelled out
@@ -143,7 +159,7 @@ to install something by hand, and on macOS it never asks for your password.
 
 ### Windows
 
-1. Download **[Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Windows.zip)**.
+1. Download **[Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip)**.
 2. Open the zip and double-click **Install Career Copilot** inside it.
 3. If Windows says *"Windows protected your PC"*, click **More info** →
    **Run anyway**. That warning is about the file being downloaded, not
@@ -154,7 +170,7 @@ shortcut on your Desktop. Launch it from there next time.
 
 ### macOS
 
-1. Download **[Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/Install-Career-Copilot-Mac.zip)**.
+1. Download **[Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip)**.
 2. Open the zip. **Right-click** the **Install Career Copilot** file inside
    and choose **Open**, then **Open** again.
 3. A Terminal window opens and shows each step.
@@ -165,10 +181,10 @@ macOS flags everything a browser downloads, and clearing that warning for
 good requires a paid Apple Developer account to sign and notarise the app.
 You only do the right-click once.
 
-It installs to `~/career-copilot`. Launch it next time by double-clicking
-`career-copilot.command` in that folder — no warning, the installer clears
-it. Prefer the Terminal? One line, no warning at all:
-`curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash`
+It installs to `~/career-copilot`. Launch it next time from Launchpad, or by
+double-clicking `Career Copilot.app` in that folder — no warning, the installer
+clears it, and no Terminal window. Prefer the Terminal? One line, no warning at all:
+`curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash`
 
 ### Running from source instead
 
@@ -177,10 +193,15 @@ npm install                                                   # front end
 python -m venv backend/.venv                                  # back end
 backend/.venv/Scripts/python -m pip install -r backend/requirements.txt   # Windows
 backend/.venv/bin/python -m pip install -r backend/requirements.txt       # macOS
-npm run dev                                                   # start everything
+npm start                                                     # start everything
 ```
 
-Or double-click `setup.bat` (Windows) / `setup.command` (macOS) in a copy of the
+`npm start` runs the app the way the double-click launchers do: Vite, Electron
+and the Python backend all in the background, with their output in
+`~/.career-copilot/logs/app.log` instead of a console. Use `npm run dev` when
+you want that output live in the terminal instead.
+
+Or double-click **`Setup on Windows.bat`** / **`Setup on Mac.command`** in a copy of the
 repo, which does all of the above plus the local-AI offer.
 
 ### First run

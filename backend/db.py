@@ -38,11 +38,26 @@ _COLUMN_ADDITIONS = {
         "salary_text": "VARCHAR DEFAULT ''",
         "salary_parsed": "BOOLEAN DEFAULT 0",
         "company_url": "VARCHAR",
+        "category": "VARCHAR DEFAULT 'unclassified'",
+        "score_version": "INTEGER DEFAULT 0",
+        "explanations": "JSON",
+        "posted_at": "DATETIME",
+        "missed_scans": "INTEGER DEFAULT 0",
+        "sightings": "INTEGER DEFAULT 1",
+        "closed_at": "DATETIME",
+        "closed_reason": "VARCHAR DEFAULT ''",
+    },
+    "scrape_run": {
+        "total_closed": "INTEGER DEFAULT 0",
     },
     "search_config": {
         "preferred_arrangements": "JSON",
         "locations": "JSON",
         "known_sources": "JSON",
+        "shown_categories": "JSON",
+        "excluded_categories": "JSON",
+        "company_block_list": "JSON",
+        "max_age_days": "INTEGER DEFAULT 30",
     },
 }
 
@@ -116,6 +131,49 @@ def _backfill_salaries() -> None:
             session.commit()
 
 
+def _backfill_matching() -> None:
+    """Classify and rescore jobs stored before the current rubric existed.
+
+    Jobs carry the SCORE_VERSION they were scored under. Anything older is
+    rescored here, so upgrading the app fixes the whole existing list rather
+    than only affecting jobs found from now on -- which was the old behaviour
+    and meant a user's list never improved no matter what changed.
+    """
+    from . import taxonomy
+    from .matching import SCORE_VERSION, build_profile, score_job
+    from .models import Job
+
+    with SessionLocal() as session:
+        stale = session.query(Job).filter(Job.score_version < SCORE_VERSION).all()
+        if not stale:
+            return
+        profile = build_profile(session)
+        from .ingest import parse_posted
+
+        for job in stale:
+            result = score_job(
+                {
+                    "title": job.title,
+                    "description": job.description,
+                    "location": job.location,
+                    "tags": job.tags or [],
+                },
+                profile,
+            )
+            job.score = result["score"]
+            job.score_reason = result["reason"]
+            job.red_flags = result["red_flags"]
+            job.explanations = result["explanations"]
+            job.work_type = result["work_type"]
+            job.employment_type = result["employment_type"]
+            job.score_version = result["score_version"]
+            if not job.category or job.category == "unclassified":
+                job.category = taxonomy.classify(job.title, job.description)
+            if job.posted_at is None:
+                job.posted_at = parse_posted(job.posted or "")
+        session.commit()
+
+
 def init_db() -> None:
     """Create tables on first run. Models register themselves on Base."""
     # Import models so their tables are registered before create_all runs.
@@ -125,6 +183,7 @@ def init_db() -> None:
     _ensure_columns()
     _backfill_descriptions()
     _backfill_salaries()
+    _backfill_matching()
 
     # Ensure the singleton profile row (id=1) always exists so the UI has a
     # record to edit from the very first launch.

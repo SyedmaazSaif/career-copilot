@@ -171,6 +171,32 @@ class Job(Base):
     # Dedupe
     dedupe_key: Mapped[str] = mapped_column(String, default="", index=True)
 
+    # Category from the O*NET-SOC major groups (see taxonomy.py). Drives the
+    # "which kinds of work do I want to see" filter in Settings.
+    category: Mapped[str] = mapped_column(String, default="unclassified", index=True)
+
+    # Scoring provenance. score_version is the rubric the score was produced
+    # by; a row carrying an older version is rescored rather than trusted.
+    # explanations are the plain sentences the UI shows instead of a bare
+    # number -- each one traceable to a line in the resume or the posting.
+    score_version: Mapped[int] = mapped_column(Integer, default=0)
+    explanations: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Staleness. A posting that vanishes from the boards has not necessarily
+    # closed -- it may have hit a free-listing window or run out of sponsored
+    # budget -- so it takes two consecutive misses to retire one, and a
+    # re-listing reopens it. sightings counts how many separate scans have seen
+    # it, which is the repost signal.
+    # When the board said the job was posted, parsed from the free-text
+    # `posted` field where possible. Age is the strongest honest ghost-job
+    # signal there is, and it cannot be used while it is only a string.
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    missed_scans: Mapped[int] = mapped_column(Integer, default=0)
+    sightings: Mapped[int] = mapped_column(Integer, default=1)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_reason: Mapped[str] = mapped_column(String, default="")
+
     # CRM
     stage: Mapped[str] = mapped_column(String, default="Sourced", index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -224,6 +250,21 @@ class SearchConfig(Base):
         JSON, default=lambda: ["remote", "hybrid", "onsite"]
     )
 
+    # Job categories (taxonomy.py codes). Empty shown_categories means "show
+    # everything" -- the sane default for someone who has not opened Settings.
+    # excluded_categories is the stronger instruction: those postings are
+    # dropped at ingest and never stored, so they cost nothing to keep out.
+    shown_categories: Mapped[list] = mapped_column(JSON, default=list)
+    excluded_categories: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Companies never to show. The blunt instrument every job seeker asks for.
+    company_block_list: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Postings older than this are flagged as stale. 0 = don't flag on age.
+    # 30 days is the point where a posting is more likely to be a ghost than
+    # an active search -- see docs/MATCHING.md.
+    max_age_days: Mapped[int] = mapped_column(Integer, default=30)
+
 
 class CustomSource(Base):
     """A user-added job source: an RSS feed, a Greenhouse/Lever company board, or
@@ -266,5 +307,8 @@ class ScrapeRun(Base):
     trigger: Mapped[str] = mapped_column(String, default="manual")  # manual|daily
     total_found: Mapped[int] = mapped_column(Integer, default=0)
     total_new: Mapped[int] = mapped_column(Integer, default=0)
+    # How many postings this scan retired to Closed, so the run history shows
+    # the list being kept clean rather than only growing.
+    total_closed: Mapped[int] = mapped_column(Integer, default=0)
     source_counts: Mapped[dict] = mapped_column(JSON, default=dict)
     error: Mapped[str] = mapped_column(Text, default="")

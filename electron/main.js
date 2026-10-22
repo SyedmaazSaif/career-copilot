@@ -218,19 +218,38 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(async () => {
-  startBackend();
-  try {
-    await waitForBackend();
-  } catch (err) {
-    console.error(err.message);
-  }
-  createWindow();
+// One copy at a time. The launcher is a double-clickable file with no console
+// to show that the app is already starting, so an impatient second click used
+// to start a second backend, which then failed to bind port 8000 and left the
+// user with a window that never loaded. Now the second copy simply raises the
+// window that already exists and quits.
+const gotTheLock = app.requestSingleInstanceLock();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
-});
+
+  app.whenReady().then(async () => {
+    startBackend();
+    try {
+      await waitForBackend();
+    } catch (err) {
+      console.error(err.message);
+    }
+    createWindow();
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   stopBackend();

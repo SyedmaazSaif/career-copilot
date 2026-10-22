@@ -41,7 +41,7 @@ say "====================================================="
 say "   career-copilot  -  setup (macOS)"
 say "====================================================="
 say "This installs everything the app needs, then starts it."
-say "Leave this window open while you use the app."
+say "You can close this window once setup finishes -- the app keeps running."
 
 # Strip the quarantine flag from this folder so the launcher created at the end
 # opens on a double-click instead of hitting the Gatekeeper wall every time.
@@ -145,20 +145,100 @@ backend/.venv/bin/python -m backend.setup_ai || true
 # Step 6: a launcher, then start
 # ---------------------------------------------------------------------------
 step 6 "Starting career-copilot..."
-# Written here rather than shipped in the repo, for two reasons: a file created
-# locally carries no quarantine flag, so it opens on a double-click without a
-# Gatekeeper warning; and it can bake in the PATH that finds our own Node.
-cat > career-copilot.command <<LAUNCHER
+# The launcher is a real .app bundle, not a .command file. Double-clicking a
+# .command always opens Terminal and leaves that window on screen for as long
+# as the app runs; a .app launches with nothing but the app's own window.
+#
+# It is written here rather than shipped in the repo for two reasons: a bundle
+# created locally carries no quarantine flag, so it opens on a double-click
+# without a Gatekeeper warning, and it can bake in the path to the Node this
+# setup installed.
+APP="$PWD/Career Copilot.app"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS"
+
+# NOTE for future edits: XML comments must not contain a double hyphen, and a
+# malformed Info.plist makes macOS refuse the app with a misleading "not
+# responding" error. Keep explanations in this shell script, not in the plist.
+#
+# The bundle identifier must also be unique to this copy. Two bundles sharing
+# one identifier in different folders is what produced that error before:
+# LaunchServices resolved the id to one copy while the user opened the other.
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Career Copilot</string>
+  <key>CFBundleDisplayName</key><string>Career Copilot</string>
+  <key>CFBundleIdentifier</key><string>com.syedmaazsaif.careercopilot.launcher2</string>
+  <key>CFBundleExecutable</key><string>career-copilot</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>2.0</string>
+  <key>CFBundleVersion</key><string>2</string>
+  <key>LSMinimumSystemVersion</key><string>10.13</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+PLIST
+
+# Refuse to ship a bundle macOS cannot read.
+if command -v plutil >/dev/null 2>&1; then
+  plutil -lint "$APP/Contents/Info.plist" >/dev/null 2>&1 \
+    || die "The app bundle came out malformed. Please report this."
+fi
+
+# The absolute path of the Node this setup just used, baked in on purpose. An
+# app launched from Finder gets a bare PATH and inherits nothing from your
+# shell, so a Node installed by Homebrew or nvm would not be found at launch.
+NODE_BIN="$(command -v node)"
+
+cat > "$APP/Contents/MacOS/career-copilot" <<LAUNCHER
 #!/bin/bash
-# Double-click to start career-copilot. Close this window to stop it.
-cd "\$(dirname "\$0")" || exit 1
-export PATH="$TOOLS/node/bin:\$PATH"
-npm run dev
+# Starts career-copilot with no Terminal window. Output goes to
+# ~/.career-copilot/logs/app.log. Close the app window to stop it.
+#
+# This hands off and exits straight away. An earlier version stayed alive for
+# the whole session, and macOS treats a bundle whose executable never settles
+# as a hung app, refusing to open it.
+cd "$PWD" || exit 1
+
+LOG_DIR="\$HOME/.career-copilot/logs"
+mkdir -p "\$LOG_DIR"
+
+NODE="$NODE_BIN"
+if [ ! -x "\$NODE" ]; then
+  for candidate in "$TOOLS/node/bin/node" /opt/homebrew/bin/node \\
+                   /usr/local/bin/node /usr/bin/node; do
+    [ -x "\$candidate" ] && NODE="\$candidate" && break
+  done
+fi
+if [ ! -x "\$NODE" ]; then
+  osascript -e 'display alert "Career Copilot" message "Node.js was not found. Run \"Setup on Mac.command\" once to repair the install." as critical' >/dev/null 2>&1
+  exit 1
+fi
+
+nohup "\$NODE" scripts/start.js >>"\$LOG_DIR/app.log" 2>&1 &
+disown 2>/dev/null
+exit 0
 LAUNCHER
-chmod +x career-copilot.command
+chmod +x "$APP/Contents/MacOS/career-copilot"
+xattr -dr com.apple.quarantine "$APP" >/dev/null 2>&1 || true
+
+# The old launcher opened Terminal every time. Leave it behind and it stays the
+# thing people double-click out of habit.
+rm -f career-copilot.command
+
+# A copy in /Applications so the app is in Launchpad and Spotlight like any
+# other. It is a symlink, so it never goes stale when this folder updates.
+ln -sfn "$APP" "/Applications/Career Copilot.app" 2>/dev/null || true
 
 say ""
 say "   Setup complete. The app window opens in a moment."
-say "   Next time, double-click career-copilot.command in this folder."
+say "   Next time, open Career Copilot from Launchpad, or double-click"
+say "   \"Career Copilot.app\" in this folder. No Terminal window appears."
+say "   If something goes wrong, the log is at ~/.career-copilot/logs/app.log"
 say ""
-npm run dev
+# Start it detached, so this Terminal window can be closed right away instead
+# of having to stay open for as long as the app runs.
+open "$APP"

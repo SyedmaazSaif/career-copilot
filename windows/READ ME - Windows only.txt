@@ -1,0 +1,16 @@
+WINDOWS ONLY
+============
+
+Nothing here runs on a Mac. On this Mac, go up one folder and open
+Career Copilot.app.
+
+On a Windows PC:
+
+  First time:        double-click   Setup on Windows.bat
+  Every time after:  double-click   career-copilot.vbs
+                     (setup also puts a career-copilot shortcut on the Desktop)
+
+  start.bat              same as career-copilot.vbs, but flashes a console
+                         for a moment. Use the .vbs instead.
+  install-windows.bat    only for putting the app on a PC that does not have
+                         it yet -- it downloads a fresh copy from GitHub.

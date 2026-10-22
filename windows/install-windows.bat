@@ -10,7 +10,7 @@ REM to a file downloaded from the internet, not a problem with this file:
 REM click "More info", then "Run anyway".
 REM
 REM NOTE: Install-Career-Copilot-Windows.zip carries a copy of this file, so
-REM after editing it re-run:  python mac-installer/build_zip.py
+REM after editing it re-run:  python installer/mac-installer/build_zip.py
 
 setlocal enabledelayedexpansion
 title career-copilot installer
@@ -78,13 +78,17 @@ if exist "%WORK%\keep" (
 )
 
 REM ---------- Desktop shortcut ----------
+REM The shortcut runs wscript.exe rather than opening the .vbs directly: on a
+REM PC where .vbs is associated with cscript ^(or with an editor^), opening the
+REM file would show a console window, or its source code. wscript has no
+REM console of its own, so the app starts with nothing on screen but its window.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'),'career-copilot.lnk')); $s.TargetPath='%CAREER_COPILOT_DIR%\career-copilot.vbs'; $s.WorkingDirectory='%CAREER_COPILOT_DIR%'; $s.Description='career-copilot'; $s.Save()" >nul 2>nul
+  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'),'career-copilot.lnk')); $s.TargetPath=[IO.Path]::Combine($env:SystemRoot,'System32\wscript.exe'); $s.Arguments='\"%CAREER_COPILOT_DIR%\windows\career-copilot.vbs\"'; $s.WorkingDirectory='%CAREER_COPILOT_DIR%'; $s.Description='career-copilot'; $s.Save()" >nul 2>nul
 
 REM ---------- Hand over to setup ----------
 echo [3/3] Running setup...
 echo.
 cd /d "%CAREER_COPILOT_DIR%"
-call setup.bat
+call "windows\Setup on Windows.bat"
 
 endlocal

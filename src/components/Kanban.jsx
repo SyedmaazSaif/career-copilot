@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import MatchMeter from "./MatchMeter.jsx";
 
-const STAGES = ["Sourced", "Applied", "Screening", "Interview", "Offer", "Closed"];
-// The two stages that matter for daily triage. The rest live behind "Show all".
-const FOCUS_STAGES = ["Sourced", "Applied"];
+// The board tracks only whether you've applied -- the app has no way to know
+// about a screen, an interview, or an offer, so pretending to track those
+// stages was fiction. Any stage besides "Sourced" (there used to be several)
+// buckets into "Applied" here; the backend still records whatever exact stage
+// a job carries from before this simplification.
+const COLUMNS = ["Sourced", "Applied"];
+const COLUMN_LABEL = { Sourced: "Jobs", Applied: "Applied" };
 const STAGE_HINT = {
-  Sourced: "Found by a scan, not yet acted on",
+  Sourced: "Found by a scan, not yet applied",
   Applied: "You have applied",
-  Screening: "Recruiter screen in progress",
-  Interview: "Interviewing",
-  Offer: "Offer on the table",
-  Closed: "Rejected, withdrawn, or declined",
 };
 const DRAG_THRESHOLD = 5; // px before a press becomes a drag rather than a click
 
@@ -45,7 +45,6 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState(null);
   const [overStage, setOverStage] = useState(null);
-  const [showAll, setShowAll] = useState(false);
   const [clearing, setClearing] = useState(false);
   const drag = useRef(null); // { id, fromStage, startX, startY, moved }
 
@@ -159,32 +158,24 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
     );
   }
 
-  const byStage = Object.fromEntries(STAGES.map((s) => [s, []]));
-  for (const j of jobs) (byStage[j.stage] ?? byStage.Sourced).push(j);
+  // Any stage other than "Sourced" (leftover Screening/Interview/Offer from
+  // before the pipeline was simplified, plus "Applied" itself) buckets into
+  // the Applied column -- the app never sees those stages happen, so drawing
+  // them as separate columns was always fiction. Closed jobs never reach this
+  // component: the backend excludes them by default.
+  const byStage = { Sourced: [], Applied: [] };
+  for (const j of jobs) (j.stage === "Sourced" ? byStage.Sourced : byStage.Applied).push(j);
   // Sourced is scan output — surface the freshest roles first so re-scans feel
-  // like they update the board. User-curated stages stay ranked by fit + order.
+  // like they update the board. Applied stays ranked by fit + order.
   const ts = (j) => (j.first_scanned_at ? new Date(j.first_scanned_at).getTime() : 0);
   byStage.Sourced.sort((a, b) => ts(b) - ts(a) || b.score - a.score);
-  for (const s of STAGES) {
-    if (s === "Sourced") continue;
-    byStage[s].sort((a, b) => b.score - a.score || a.sort_order - b.sort_order);
-  }
+  byStage.Applied.sort((a, b) => b.score - a.score || a.sort_order - b.sort_order);
 
-  const visibleStages = showAll ? STAGES : FOCUS_STAGES;
-  const hiddenCount = showAll
-    ? 0
-    : STAGES.filter((s) => !FOCUS_STAGES.includes(s)).reduce(
-        (n, s) => n + byStage[s].length,
-        0
-      );
   const staleCount = byStage.Sourced.filter((j) => isStale(j, scanAt)).length;
 
   return (
     <>
       <div className="kan-toolbar">
-        <button className="btn-ghost" onClick={() => setShowAll((v) => !v)}>
-          {showAll ? "Focus: Sourced + Applied" : "Show all stages"}
-        </button>
         {staleCount > 0 && (
           <button className="btn-ghost btn-ghost-warn" onClick={clearStale} disabled={clearing}>
             {clearing
@@ -192,21 +183,16 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
               : `Clear ${staleCount} possibly-closed`}
           </button>
         )}
-        {!showAll && hiddenCount > 0 && (
-          <span className="kan-toolbar-note">
-            {hiddenCount} job{hiddenCount > 1 ? "s" : ""} in later stages hidden
-          </span>
-        )}
       </div>
-      <div className={`kanban ${showAll ? "" : "kanban-focus"}`}>
-        {visibleStages.map((stage) => (
+      <div className="kanban">
+        {COLUMNS.map((stage) => (
           <div
             key={stage}
             data-stage={stage}
             className={`kan-col ${overStage === stage ? "drop-target" : ""}`}
           >
             <div className="kan-head" title={STAGE_HINT[stage]}>
-              <span className="kan-title">{stage}</span>
+              <span className="kan-title">{COLUMN_LABEL[stage]}</span>
               <span className="kan-count mono">{byStage[stage].length}</span>
             </div>
             <div className="kan-cards">
@@ -220,19 +206,17 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
                     }`}
                     onPointerDown={(e) => onPointerDown(e, job)}
                   >
-                    {stage === "Sourced" && (
-                      // stopPropagation on pointerdown too: the card treats a
-                      // press as the start of a drag (and a click as "open").
-                      <button
-                        className="card-remove"
-                        title="Remove this job — it won't come back in future scans"
-                        aria-label={`Remove ${job.title}`}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => remove(e, job)}
-                      >
-                        ✕
-                      </button>
-                    )}
+                    {/* stopPropagation on pointerdown too: the card treats a
+                        press as the start of a drag (and a click as "open"). */}
+                    <button
+                      className="card-remove"
+                      title="Remove this job — it won't come back in future scans"
+                      aria-label={`Remove ${job.title}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => remove(e, job)}
+                    >
+                      ✕
+                    </button>
                     <div className="job-card-main">
                       <div className="job-card-text">
                         <span className="job-card-title">
@@ -271,6 +255,16 @@ export default function Kanban({ onOpen, onChanged, scanAt }) {
                         )}
                       </span>
                     </div>
+                    <button
+                      className="card-mark-applied"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveTo(job.id, stage === "Sourced" ? "Applied" : "Sourced");
+                      }}
+                    >
+                      {stage === "Sourced" ? "Mark as applied" : "Move back to Jobs"}
+                    </button>
                   </article>
                 );
               })}

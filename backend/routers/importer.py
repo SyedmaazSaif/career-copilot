@@ -127,7 +127,40 @@ def apply_profile_data(db: Session, data: dict, replace: bool = True) -> ImportR
         counts["languages"] += 1
 
     db.commit()
+
+    # The résumé *is* the yardstick every job is measured against, so a new one
+    # has to re-rank the list. Without this, uploading your CV changed nothing
+    # about the jobs already on screen -- they kept the scores they were given
+    # when they were first scraped, which is the single biggest reason the old
+    # matching felt arbitrary.
+    _rescore_all(db)
+
     return ImportResult(profile_updated=profile_updated, **counts)
+
+
+def _rescore_all(db: Session) -> None:
+    from ..matching import build_profile, score_job
+    from ..models import Job
+
+    profile = build_profile(db)
+    for job in db.query(Job).all():
+        result = score_job(
+            {
+                "title": job.title,
+                "description": job.description,
+                "location": job.location,
+                "tags": job.tags or [],
+            },
+            profile,
+        )
+        job.score = result["score"]
+        job.score_reason = result["reason"]
+        job.red_flags = result["red_flags"]
+        job.explanations = result["explanations"]
+        job.work_type = result["work_type"]
+        job.employment_type = result["employment_type"]
+        job.score_version = result["score_version"]
+    db.commit()
 
 
 @router.post("/yaml", response_model=ImportResult)

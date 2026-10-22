@@ -1,6 +1,6 @@
 """Build the downloadable installer zips for macOS and Windows.
 
-    python mac-installer/build_zip.py
+    python installer/mac-installer/build_zip.py
 
 Run this after editing "Install Career Copilot.command" or install-windows.bat,
 then commit the regenerated zips at the repo root.
@@ -37,7 +37,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
+# build_zip lives in installer/mac-installer/, so the repo root is two up.
+ROOT = HERE.parent.parent
 
 # A fixed timestamp keeps each zip byte-identical between rebuilds, so one only
 # shows up in a diff when its contents actually changed.
@@ -57,7 +58,7 @@ class Target:
 
 TARGETS = (
     Target(
-        output=ROOT / "Install-Career-Copilot-Mac.zip",
+        output=ROOT / "installer" / "Install-Career-Copilot-Mac.zip",
         source=HERE / "Install Career Copilot.command",
         entry_name="Install Career Copilot.command",
         mode=0o100755,
@@ -66,8 +67,8 @@ TARGETS = (
         first_line="#!/bin/bash",
     ),
     Target(
-        output=ROOT / "Install-Career-Copilot-Windows.zip",
-        source=ROOT / "install-windows.bat",
+        output=ROOT / "installer" / "Install-Career-Copilot-Windows.zip",
+        source=ROOT / "windows" / "install-windows.bat",
         entry_name="Install Career Copilot.bat",
         mode=0o100644,
         create_system=0,

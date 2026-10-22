@@ -1,0 +1,19 @@
+NOTHING IN THIS FOLDER IS FOR YOU TO RUN
+========================================
+
+Career Copilot is already installed on this Mac. To use it, go back up one
+folder and open:
+
+    Career Copilot.app
+
+These files exist only to put the app on a DIFFERENT computer that does not
+have it yet:
+
+  Install-Career-Copilot-Mac.zip       what someone downloads on a new Mac
+  install-macos.sh                     the script that zip fetches and runs
+  mac-installer/                       the source the zip is built from
+  mac-installer/build_zip.py           rebuilds the zips after an edit
+
+If you double-click "Install Career Copilot.command" in mac-installer, it will
+try to download and reinstall the whole app from GitHub over the top of this
+one. You do not want that.

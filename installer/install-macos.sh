@@ -1,7 +1,7 @@
 #!/bin/bash
 # career-copilot one-line installer for macOS.
 #
-#   curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/install-macos.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash
 #
 # Downloads the app, installs everything it needs, offers the optional local
 # AI, and starts it. Nothing here needs git, Homebrew or a developer account.
@@ -42,7 +42,7 @@ curl -fSL --retry 3 -o "$work/app.zip" "$ZIP_URL" \
   || die "Download failed. Check your internet connection and try again."
 
 say "[2/3] Unpacking..."
-# ditto, not unzip: it keeps the executable bit on setup.command.
+# ditto, not unzip: it keeps the executable bit on "Setup on Mac.command".
 ditto -x -k "$work/app.zip" "$work/unpacked" || die "Could not unpack the download."
 src="$(find "$work/unpacked" -maxdepth 1 -type d -name '*career-copilot*' | head -1)"
 [ -n "$src" ] || die "The download did not contain the app."
@@ -75,7 +75,7 @@ fi
 # Nothing that arrived through this pipe is quarantined, but be explicit: it
 # costs nothing and it guarantees the launcher opens on a double-click.
 xattr -dr com.apple.quarantine "$DEST" >/dev/null 2>&1 || true
-chmod +x "$DEST/setup.command" 2>/dev/null || true
+chmod +x "$DEST/Setup on Mac.command" 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Hand over to the setup script, which does the actual work.
@@ -86,7 +86,7 @@ cd "$DEST" || die "Could not open $DEST."
 # already at end-of-file. Setup asks a question (the optional local AI), so hand
 # it the terminal instead -- otherwise that question answers itself with silence.
 if [ -e /dev/tty ]; then
-  exec bash ./setup.command < /dev/tty
+  exec bash "./Setup on Mac.command" < /dev/tty
 else
-  exec bash ./setup.command
+  exec bash "./Setup on Mac.command"
 fi
