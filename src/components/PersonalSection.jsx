@@ -31,13 +31,15 @@ const FIELDS = [
   },
   {
     name: "cv_folder",
-    label: "CV save folder (empty = app's own folder)",
-    group: "Job search",
+    label: "Folder to save your CVs into",
+    group: "CV output",
     mono: true,
+    placeholder: "/Users/you/Desktop/…/Resume & Career",
+    hint: "Paste the full folder path. Empty = the app's own folder.",
   },
 ];
 
-const GROUPS = ["Identity", "Contact", "Links", "Summary", "Job search"];
+const GROUPS = ["CV output", "Identity", "Contact", "Links", "Summary", "Job search"];
 
 export default function PersonalSection() {
   const [form, setForm] = useState(null);
@@ -102,7 +104,13 @@ export default function PersonalSection() {
                     className={f.mono ? "mono" : ""}
                     value={form[f.name] ?? ""}
                     onChange={(e) => update(f.name, e.target.value)}
+                    placeholder={f.placeholder}
                   />
+                )}
+                {f.hint && (
+                  <small style={{ color: "#667284", fontSize: 12, marginTop: 4 }}>
+                    {f.hint}
+                  </small>
                 )}
               </label>
             ))}
