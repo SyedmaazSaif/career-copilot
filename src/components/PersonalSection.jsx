@@ -29,6 +29,12 @@ const FIELDS = [
     group: "Job search",
     mono: true,
   },
+  {
+    name: "cv_folder",
+    label: "CV save folder (empty = app's own folder)",
+    group: "Job search",
+    mono: true,
+  },
 ];
 
 const GROUPS = ["Identity", "Contact", "Links", "Summary", "Job search"];

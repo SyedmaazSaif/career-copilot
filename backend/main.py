@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import DB_PATH, init_db
-from .routers import ai, cv, experiences, importer, jobs, profile, settings
+from .routers import ai, cover_letter, cv, experiences, importer, jobs, profile, settings
 from .routers.flat import (
     certification_router,
     education_router,
@@ -55,6 +55,7 @@ app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(ai.router)
 app.include_router(cv.router)
+app.include_router(cover_letter.router)
 
 
 @app.get("/health")

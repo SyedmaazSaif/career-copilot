@@ -24,6 +24,7 @@ class ProfileBase(BaseModel):
     notice_period: str = ""
     salary_expectation_usd: str = ""
     salary_expectation_pkr: str = ""
+    cv_folder: str = ""
 
 
 class ProfileOut(ProfileBase, ORMModel):
@@ -274,6 +275,7 @@ class CVPackOut(ORMModel):
     id: int
     job_id: int
     filename: str
+    file_path: str = ""
     target_title: str
     used_ai: bool
     flags: list[str]

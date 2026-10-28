@@ -53,6 +53,6 @@ def download_cv(pack_id: int, db: Session = Depends(get_db)):
         raise HTTPException(410, "the file was moved or deleted — regenerate it")
     return FileResponse(
         str(path),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type="application/pdf",
         filename=pack.filename,
     )

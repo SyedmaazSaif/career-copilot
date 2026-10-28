@@ -113,7 +113,7 @@ def _rescore_all(db: Session) -> None:
 
 
 # ---- Custom sources (user-added job boards / feeds) ----
-_KINDS = {"rss", "greenhouse", "lever", "url"}
+_KINDS = {"rss", "greenhouse", "lever", "ashby", "company", "url"}
 
 
 @router.get("/sources", response_model=list[CustomSourceOut])

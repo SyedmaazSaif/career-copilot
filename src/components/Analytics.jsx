@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import FollowUps from "./FollowUps.jsx";
 
 export default function Analytics() {
   const [data, setData] = useState(null);
@@ -30,6 +31,15 @@ export default function Analytics() {
           value={data.avg_days_to_first_reply ?? "—"}
         />
       </div>
+
+      {data.diagnosis && (
+        <div className="panel diagnosis">
+          <h2>{data.diagnosis.heading}</h2>
+          <p className="empty-hint" style={{ marginTop: 4, marginBottom: 0 }}>
+            {data.diagnosis.advice}
+          </p>
+        </div>
+      )}
 
       <div className="analytics-grid">
         <div className="panel">
@@ -76,6 +86,8 @@ export default function Analytics() {
           </div>
         </div>
       </div>
+
+      <FollowUps />
 
       <div className="panel">
         <h2>Source conversion</h2>

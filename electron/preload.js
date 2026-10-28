@@ -4,7 +4,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("copilot", {
   backendUrl: "http://127.0.0.1:8000",
   // Open a job's page in a native in-app browser window.
-  openApply: (url) => ipcRenderer.invoke("open-apply", url),
+  openApply: (url, cvPath) => ipcRenderer.invoke("open-apply", url, cvPath),
+  // Reveal a file in the OS file manager.
+  showItem: (path) => ipcRenderer.invoke("show-item", path),
+  // Native file picker for choosing a CV (returns the path, or null).
+  pickCv: () => ipcRenderer.invoke("pick-cv"),
   // Open a URL in the user's real browser (e.g. the releases page).
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   // One-click update: downloads the new version and refreshes the app.

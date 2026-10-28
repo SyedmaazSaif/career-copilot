@@ -9,6 +9,7 @@ Best-effort:
 """
 from __future__ import annotations
 
+import re
 import sys
 import xml.etree.ElementTree as ET
 from typing import Callable
@@ -132,6 +133,36 @@ def fetch_lever(company: str) -> list[dict]:
         return []
 
 
+def fetch_ashby(company: str) -> list[dict]:
+    """A company's Ashby board (public JSON API)."""
+    slug = company.strip().rstrip("/").split("/")[-1]
+    try:
+        r = requests.get(
+            f"https://api.ashbyhq.com/posting-api/job-board/{slug}",
+            headers=HEADERS, timeout=25,
+        )
+        if r.status_code != 200:
+            return []
+        out = []
+        for j in r.json().get("jobs", []):
+            loc = j.get("location")
+            if isinstance(loc, dict):
+                loc = loc.get("name") or "Remote"
+            out.append(_norm(
+                f"ashby:{slug}",
+                j.get("title", ""),
+                slug,
+                loc or "Remote",
+                j.get("jobUrl") or j.get("applyUrl", ""),
+                _strip_html(j.get("descriptionHtml") or j.get("description", "")),
+                j.get("publishedAt", ""),
+            ))
+        return out
+    except Exception as exc:
+        print(f"[ashby] {company} failed: {exc}", file=sys.stderr)
+        return []
+
+
 def fetch_single_job(url: str) -> dict | None:
     """Best-effort extraction of one job posting from a page URL."""
     try:
@@ -170,10 +201,58 @@ def fetch_generic(url: str, label: str = "") -> list[dict]:
     return [job] if job else []
 
 
+def _detect_ats(text: str) -> tuple[str | None, str | None]:
+    """Find a known applicant-tracking-system board in a URL or HTML string.
+    Returns (kind, slug)."""
+    t = text or ""
+    m = re.search(r"greenhouse\.io/embed/job_board\?for=([a-z0-9-]+)", t)
+    if m:
+        return ("greenhouse", m.group(1))
+    m = re.search(r"boards\.greenhouse\.io/([a-z0-9-]+)", t)
+    if m:
+        return ("greenhouse", m.group(1))
+    m = re.search(r"jobs\.lever\.co/([a-z0-9-]+)", t)
+    if m:
+        return ("lever", m.group(1))
+    m = re.search(r"jobs\.ashbyhq\.com/([a-z0-9-]+)", t)
+    if m:
+        return ("ashby", m.group(1))
+    return (None, None)
+
+
+def _fetch_by_kind(kind: str, slug: str, label: str = "") -> list[dict]:
+    if kind == "greenhouse":
+        return fetch_greenhouse(slug)
+    if kind == "lever":
+        return fetch_lever(slug)
+    if kind == "ashby":
+        return fetch_ashby(slug)
+    return []
+
+
+def fetch_company(url: str, label: str = "") -> list[dict]:
+    """Scan a company's careers page: detect its ATS and pull the whole board.
+    Falls back to treating the page as a single posting."""
+    kind, slug = _detect_ats(url)
+    if kind:
+        return _fetch_by_kind(kind, slug, label)
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=25)
+        if r.status_code == 200:
+            kind, slug = _detect_ats(r.text)
+            if kind:
+                return _fetch_by_kind(kind, slug, label)
+    except Exception as exc:
+        print(f"[company] {url} failed: {exc}", file=sys.stderr)
+    return fetch_generic(url, label)
+
+
 _DISPATCH: dict[str, Callable] = {
     "rss": fetch_rss,
     "greenhouse": lambda v, label="": fetch_greenhouse(v),
     "lever": lambda v, label="": fetch_lever(v),
+    "ashby": lambda v, label="": fetch_ashby(v),
+    "company": fetch_company,
     "url": fetch_generic,
 }
 
@@ -192,7 +271,7 @@ def run_custom_sources(
         if not fn or not s.value:
             continue
         try:
-            batch = fn(s.value, s.label) if s.kind in ("rss", "url") else fn(s.value)
+            batch = fn(s.value, s.label) if s.kind in ("rss", "url", "company") else fn(s.value)
         except Exception as exc:
             print(f"[custom {s.kind}] {s.value} failed: {exc}", file=sys.stderr)
             batch = []

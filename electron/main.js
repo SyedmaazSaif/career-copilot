@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { spawn, execFile } = require("child_process");
 const fs = require("fs");
 const os = require("os");
@@ -137,7 +137,7 @@ function waitForBackend(timeoutMs = 20000) {
 // a small toolbar (back / forward / reload / open in system browser).
 const applyWindows = new Set();
 
-function openApplyWindow(targetUrl) {
+function openApplyWindow(targetUrl, cvPath) {
   if (!/^https?:\/\//i.test(targetUrl)) return; // only real web pages
   const win = new BrowserWindow({
     width: 1100,
@@ -167,6 +167,7 @@ function openApplyWindow(targetUrl) {
   win.webContents.on("did-finish-load", () => {
     console.log("[apply] shell loaded ok; sending url");
     win.webContents.send("apply-url", targetUrl);
+    if (cvPath) win.webContents.send("apply-cv", cvPath);
   });
   // Log where the inner job-page (webview) actually navigates, so a blank page
   // is distinguishable from the real page.
@@ -180,8 +181,32 @@ function openApplyWindow(targetUrl) {
   win.on("closed", () => applyWindows.delete(win));
 }
 
-ipcMain.handle("open-apply", (_event, url) => {
-  openApplyWindow(url);
+ipcMain.handle("open-apply", (_event, url, cvPath) => {
+  openApplyWindow(url, cvPath);
+});
+
+// Reveal a generated CV in the OS file manager so the user can drag it into
+// the job site's upload field. The app never injects files into a web page.
+ipcMain.handle("show-item", (_event, p) => {
+  if (typeof p === "string" && p.trim()) shell.showItemInFolder(p);
+});
+
+// Native file picker for "upload your own CV". Reveals the chosen file so it
+// is one drag away from the job form. Returns the path (or null if cancelled).
+ipcMain.handle("pick-cv", async () => {
+  const win = BrowserWindow.getFocusedWindow();
+  const res = await dialog.showOpenDialog(win, {
+    title: "Choose a CV to attach",
+    properties: ["openFile"],
+    filters: [
+      { name: "Resumes", extensions: ["pdf", "docx", "doc"] },
+      { name: "All files", extensions: ["*"] },
+    ],
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  const p = res.filePaths[0];
+  shell.showItemInFolder(p);
+  return p;
 });
 
 // The apply window's toolbar asks to open the current page in the real browser.

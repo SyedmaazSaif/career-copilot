@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import scan_manager
+from .. import keywords, scan_manager
 from ..company_site import find_company_site
 from ..custom_scrapers import fetch_single_job
 from ..db import get_db
 from ..ingest import dedupe_key, ingest_jobs
 from ..matching import SCORE_VERSION, build_profile, score_job
-from ..models import STAGES, DismissedJob, Job, ScrapeRun, SearchConfig
+from ..models import STAGES, DismissedJob, Job, Profile, ScrapeRun, SearchConfig
 from ..schemas import (
     AddJobByUrl,
     CompanySiteOut,
@@ -180,6 +180,45 @@ def list_runs(db: Session = Depends(get_db), limit: int = 20):
     )
 
 
+def _diagnose(jobs: list[Job]) -> dict:
+    """Plain-English read of where the search is getting stuck."""
+    applied = [j for j in jobs if j.applied_at]
+    responded = [j for j in applied if j.first_reply_at]
+    interviewed = [j for j in jobs if j.stage in ("Interview", "Offer")]
+    offers = [j for j in jobs if j.stage == "Offer"]
+
+    if len(applied) < 5:
+        return {
+            "heading": "You're just getting started",
+            "advice": "Apply to a few more strong matches. The picture gets clearer after about 10 applications.",
+        }
+    rate = len(responded) / len(applied) if applied else 0.0
+    if offers:
+        return {
+            "heading": "You have an offer — nice work",
+            "advice": "The search is working. Keep the momentum and decide on your terms.",
+        }
+    if rate < 0.10:
+        return {
+            "heading": "Few replies — your resume may need work",
+            "advice": "Less than 10% of applications get a reply. Tailor your CV to each role and use the ATS keyword check before applying more.",
+        }
+    if interviewed:
+        return {
+            "heading": "Good response rate, but no offer yet",
+            "advice": "You're getting interviews, so your resume works. The gap is interviews — rehearse answers and ask for feedback after each round.",
+        }
+    if responded:
+        return {
+            "heading": "Some replies, no interviews yet",
+            "advice": "You're getting replies but not interviews. Sharpen your CV to the specific role and follow up on outstanding applications.",
+        }
+    return {
+        "heading": "No replies yet",
+        "advice": "No responses so far. Make sure your CV is tailored, apply early, and send a polite follow-up on older applications.",
+    }
+
+
 @router.get("/analytics")
 def analytics(db: Session = Depends(get_db)):
     jobs = db.scalars(select(Job)).all()
@@ -231,7 +270,55 @@ def analytics(db: Session = Depends(get_db)):
         "applications_per_week": [{"week": w, "count": c} for w, c in weeks_sorted],
         "source_conversion": source_conversion,
         "stage_counts": stage_counts,
+        "diagnosis": _diagnose(jobs),
     }
+
+
+FOLLOWUP_AFTER_DAYS = 5
+
+
+def _build_followup(job: Job, name: str, title: str) -> str:
+    role = job.title or "the role"
+    company = job.company or "your team"
+    body = (
+        f"I applied for the {role} position and wanted to follow up. "
+        "I remain very interested and would be glad to share more about how my background fits."
+    )
+    if title:
+        body += f" As a {title}, I believe I can contribute from day one."
+    return (
+        f"Hi {company} team,\n\n{body}\n\n"
+        f"Thank you for your consideration.\n\nBest,\n{name or 'Your name'}"
+    )
+
+
+@router.get("/follow-ups")
+def follow_ups(db: Session = Depends(get_db)):
+    """Applications in 'Applied' with no reply after a few days — a nudge list
+    with a ready-to-send message built from profile facts."""
+    profile = db.get(Profile, 1)
+    name = (profile.name or "").strip() if profile else ""
+    title = (profile.title or "").strip() if profile else ""
+    jobs = db.scalars(select(Job)).all()
+    now = datetime.utcnow()
+    due = []
+    for j in jobs:
+        if j.stage != "Applied" or j.first_reply_at or not j.applied_at:
+            continue
+        days = (now - j.applied_at).total_seconds() / 86400.0
+        if days < FOLLOWUP_AFTER_DAYS:
+            continue
+        due.append(
+            {
+                "job_id": j.id,
+                "title": j.title,
+                "company": j.company,
+                "days_since": round(days),
+                "message": _build_followup(j, name, title),
+            }
+        )
+    due.sort(key=lambda x: -x["days_since"])
+    return due
 
 
 @router.get("/dismissed", response_model=list[DismissedJobOut])
@@ -319,6 +406,16 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
     if job is None:
         raise HTTPException(404, "job not found")
     return _mark_new([job], _latest_scan_start(db))[0]
+
+
+@router.get("/{job_id}/keyword-gaps")
+def get_keyword_gaps(job_id: int, db: Session = Depends(get_db)):
+    """ATS keyword check: words the job wants that the profile is missing,
+    plus quick profile-completeness tips."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "job not found")
+    return keywords.keyword_gaps(db, job)
 
 
 @router.post("/{job_id}/find-company-site", response_model=CompanySiteOut)

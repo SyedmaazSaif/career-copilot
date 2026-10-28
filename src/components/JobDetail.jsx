@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import MatchMeter from "./MatchMeter.jsx";
+import CoverLetterSection from "./CoverLetter.jsx";
+import KeywordCheck from "./KeywordCheck.jsx";
 
 // "$120k", "$120k–$150k", or null when unknown.
 function fmtSalary(job) {
@@ -14,8 +16,8 @@ function fmtSalary(job) {
 
 // Prefer the native in-app browser (Electron). In the dev web build, fall back
 // to a new tab.
-function openToApply(url) {
-  if (window.copilot?.openApply) window.copilot.openApply(url);
+function openToApply(url, cvPath) {
+  if (window.copilot?.openApply) window.copilot.openApply(url, cvPath);
   else window.open(url, "_blank", "noreferrer");
 }
 
@@ -30,6 +32,7 @@ function openInBrowser(url) {
 export default function JobDetail({ jobId, onClose, onChanged }) {
   const [job, setJob] = useState(null);
   const [error, setError] = useState(null);
+  const [latestCvPath, setLatestCvPath] = useState(null);
 
   async function load() {
     try {
@@ -140,7 +143,11 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
 
             <ScoreBreakdown reason={job.score_reason} />
 
-            <CVSection job={job} />
+            <CVSection job={job} onLatestCv={setLatestCvPath} />
+
+            <CoverLetterSection job={job} />
+
+            <KeywordCheck jobId={job.id} />
 
             {job.requirements.length > 0 && (
               <section className="detail-section">
@@ -161,7 +168,7 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
             <ApplicationLinks job={job} onSaved={setJob} />
 
             <div className="modal-actions">
-              <button className="btn-apply" onClick={() => openToApply(job.url)}>
+              <button className="btn-apply" onClick={() => openToApply(job.url, latestCvPath)}>
                 Open listing to apply
               </button>
               <button className="btn-danger" onClick={remove}>
@@ -320,7 +327,7 @@ function ApplicationLinks({ job, onSaved }) {
   );
 }
 
-function CVSection({ job }) {
+function CVSection({ job, onLatestCv }) {
   const [packs, setPacks] = useState(null);
   const [targetTitle, setTargetTitle] = useState(job.title || "");
   const [emphasis, setEmphasis] = useState("");
@@ -330,10 +337,19 @@ function CVSection({ job }) {
 
   async function load() {
     try {
-      setPacks(await api.get(`/api/jobs/${job.id}/cv`));
+      const p = await api.get(`/api/jobs/${job.id}/cv`);
+      setPacks(p);
+      onLatestCv?.(p && p.length ? p[0] : null);
     } catch {
       setPacks([]);
+      onLatestCv?.(null);
     }
+  }
+
+  function revealCv(path) {
+    if (!path) return;
+    if (window.copilot?.showItem) window.copilot.showItem(path);
+    else window.alert("Saved here:\n" + path);
   }
   useEffect(() => {
     load();
@@ -358,7 +374,7 @@ function CVSection({ job }) {
     <section className="detail-section">
       <h3>Tailored CV</h3>
       <p className="empty-hint" style={{ marginTop: 0 }}>
-        Builds an ATS-friendly Word CV from your profile facts only, ordered for this
+        Builds an ATS-friendly PDF CV from your profile facts only, ordered for this
         job. Nothing is invented.
       </p>
       <div className="cv-form">
@@ -389,6 +405,12 @@ function CVSection({ job }) {
       </div>
       {error && <div className="banner error" style={{ marginTop: 10 }}>{error}</div>}
 
+      {packs && packs.length > 0 && packs[0].file_path && (
+        <p className="empty-hint" style={{ marginTop: 8 }}>
+          Saved to: <span className="mono">{packs[0].file_path}</span>
+        </p>
+      )}
+
       {packs && packs.length > 0 && (
         <ul className="cv-list">
           {packs.map((p) => (
@@ -409,6 +431,13 @@ function CVSection({ job }) {
               <a className="link-btn" href={api.fileUrl(`/api/cv/${p.id}/download`)}>
                 Download
               </a>
+              <button
+                className="btn-secondary btn-sm"
+                onClick={() => revealCv(p.file_path)}
+                title={p.file_path}
+              >
+                Reveal in folder
+              </button>
             </li>
           ))}
         </ul>

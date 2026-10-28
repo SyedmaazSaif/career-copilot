@@ -116,7 +116,8 @@ def build_cv_data(data: dict, job, answers: dict, use_ai: bool) -> dict:
     return {
         "name": profile.name if profile else "",
         "title": target_title,
-        "contact": _contact_line(profile),
+        "contact": _contact_line1(profile),
+        "contact2": _contact_line2(profile),
         "summary": profile.summary if profile else "",
         "experiences": experiences_out,
         "skills": [s.name for s in selected["skills"]],
@@ -132,10 +133,19 @@ def build_cv_data(data: dict, job, answers: dict, use_ai: bool) -> dict:
     }
 
 
-def _contact_line(profile) -> str:
+def _contact_line1(profile) -> str:
+    """Header line 1 in the master format: location | phone | email."""
     if not profile:
         return ""
-    parts = [profile.email, profile.phone, profile.location, profile.linkedin, profile.portfolio]
+    parts = [profile.location, profile.phone, profile.email]
+    return "  |  ".join(p for p in parts if p)
+
+
+def _contact_line2(profile) -> str:
+    """Header line 2 in the master format: website | linkedin."""
+    if not profile:
+        return ""
+    parts = [profile.portfolio, profile.linkedin]
     return "  |  ".join(p for p in parts if p)
 
 
@@ -170,13 +180,24 @@ def verify_cv(cv_data: dict, data: dict) -> list[str]:
     return flags
 
 
-def _slug(text: str, n: int = 30) -> str:
-    s = re.sub(r"[^a-z0-9]+", "_", (text or "").lower()).strip("_")
-    return s[:n] or "cv"
+def _title_slug(text: str, fallback: str = "CV") -> str:
+    """'Syed maaz saif' -> 'Syed_Maaz_Saif'; Title Case, words joined with _."""
+    s = re.sub(r"[^A-Za-z0-9]+", " ", (text or "").strip()).title()
+    return "_".join(s.split()) or fallback
+
+
+def _esc(text: str) -> str:
+    """Escape text for reportlab Paragraph XML."""
+    return (
+        (text or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
 
 
 def build_docx(cv_data: dict, path: Path) -> None:
-    """Write a clean, single-column, ATS-safe docx (no tables, no graphics)."""
+    """Write the master-format CV as a clean, single-column, ATS-safe docx."""
     import docx
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt, RGBColor
@@ -195,56 +216,60 @@ def build_docx(cv_data: dict, path: Path) -> None:
         p.space_after = Pt(2)
         return p
 
-    # Header: name + title + contact
-    name_p = doc.add_paragraph()
-    name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    nr = name_p.add_run(cv_data["name"] or "")
-    nr.bold = True
-    nr.font.size = Pt(18)
+    def centered(text, size=9, bold=False):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(text)
+        r.font.size = Pt(size)
+        r.bold = bold
+        return p
+
+    # Header: name (caps), title, two contact lines — the master format.
+    centered((cv_data["name"] or "").upper(), size=17, bold=True)
     if cv_data["title"]:
-        tp = doc.add_paragraph()
-        tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        tp.add_run(cv_data["title"]).font.size = Pt(11)
+        centered(cv_data["title"], size=11)
     if cv_data["contact"]:
-        cp = doc.add_paragraph()
-        cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        cp.add_run(cv_data["contact"]).font.size = Pt(9)
+        centered(cv_data["contact"], size=9)
+    if cv_data["contact2"]:
+        centered(cv_data["contact2"], size=9)
 
     if cv_data["summary"]:
-        heading("Summary")
+        heading("Professional Summary")
         doc.add_paragraph(cv_data["summary"])
 
-    if cv_data["experiences"]:
-        heading("Experience")
-        for exp in cv_data["experiences"]:
-            p = doc.add_paragraph()
-            r = p.add_run(f"{exp['role']}")
-            r.bold = True
-            meta = "  |  ".join(x for x in [exp["company"], exp["location"], exp["dates"]] if x)
-            if meta:
-                p.add_run(f"   {meta}").font.size = Pt(9)
-            for b in exp["bullets"]:
-                doc.add_paragraph(b, style="List Bullet")
-
     if cv_data["skills_by_cat"]:
-        heading("Skills")
+        heading("Core Competencies")
         for cat, names in cv_data["skills_by_cat"]:
             p = doc.add_paragraph()
             p.add_run(f"{cat}: ").bold = True
             p.add_run(", ".join(names))
 
-    if cv_data["education"]:
-        heading("Education")
-        for e in cv_data["education"]:
+    if cv_data["experiences"]:
+        heading("Professional Experience")
+        for exp in cv_data["experiences"]:
+            p = doc.add_paragraph()
+            r = p.add_run(f"{exp['role']}")
+            r.bold = True
+            if exp.get("company"):
+                p.add_run(f"   |   {exp['company']}")
+            meta = "  |  ".join(x for x in [exp.get("location"), exp.get("dates")] if x)
+            if meta:
+                mp = doc.add_paragraph()
+                mp.add_run(meta).font.size = Pt(9)
+            for b in exp["bullets"]:
+                doc.add_paragraph(b, style="List Bullet")
+
+    edu = cv_data["education"] or []
+    certs = cv_data["certifications"] or []
+    if edu or certs:
+        heading("Education & Certifications")
+        for e in edu:
             p = doc.add_paragraph()
             p.add_run(e["degree"]).bold = True
             meta = "  |  ".join(x for x in [e["school"], e["location"], e["dates"]] if x)
             if meta:
                 p.add_run(f"   {meta}").font.size = Pt(9)
-
-    if cv_data["certifications"]:
-        heading("Certifications")
-        for c in cv_data["certifications"]:
+        for c in certs:
             meta = "  |  ".join(x for x in [c["name"], c["issuer"], c["date"]] if x)
             doc.add_paragraph(meta)
 
@@ -256,21 +281,110 @@ def build_docx(cv_data: dict, path: Path) -> None:
     doc.save(str(path))
 
 
+def _output_dir(profile) -> Path:
+    """Where generated files go: the user's chosen folder, or the app default."""
+    chosen = getattr(profile, "cv_folder", "") if profile else ""
+    chosen = (chosen or "").strip()
+    if chosen:
+        return Path(chosen).expanduser()
+    return CV_DIR
+
+
+def build_pdf(cv_data: dict, path: Path) -> None:
+    """Write the master-format CV as a clean, text-based (ATS-safe) PDF."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate
+
+    dark = colors.HexColor("#1B2733")
+    grey = colors.HexColor("#555555")
+
+    name_st = ParagraphStyle("name", fontName="Helvetica-Bold", fontSize=17, alignment=1, spaceAfter=2)
+    title_st = ParagraphStyle("title", fontName="Helvetica", fontSize=11, alignment=1, spaceAfter=2)
+    contact_st = ParagraphStyle("contact", fontName="Helvetica", fontSize=9, alignment=1, textColor=dark, spaceAfter=1)
+    heading_st = ParagraphStyle("heading", fontName="Helvetica-Bold", fontSize=10.5, textColor=dark, spaceBefore=10, spaceAfter=3)
+    body_st = ParagraphStyle("body", fontName="Helvetica", fontSize=9.5, leading=12.5, spaceAfter=4)
+    bullet_st = ParagraphStyle("bullet", fontName="Helvetica", fontSize=9.5, leading=12.5, leftIndent=14, spaceAfter=2)
+    meta_st = ParagraphStyle("meta", fontName="Helvetica", fontSize=8.5, textColor=grey, spaceAfter=2)
+
+    doc = SimpleDocTemplate(
+        str(path), pagesize=letter,
+        leftMargin=0.75 * inch, rightMargin=0.75 * inch,
+        topMargin=0.6 * inch, bottomMargin=0.6 * inch,
+        title=cv_data.get("name") or "CV",
+    )
+    story = []
+
+    story.append(Paragraph(_esc(cv_data.get("name") or "").upper(), name_st))
+    if cv_data.get("title"):
+        story.append(Paragraph(_esc(cv_data["title"]), title_st))
+    if cv_data.get("contact"):
+        story.append(Paragraph(_esc(cv_data["contact"]), contact_st))
+    if cv_data.get("contact2"):
+        story.append(Paragraph(_esc(cv_data["contact2"]), contact_st))
+
+    def heading(text):
+        story.append(Paragraph(text, heading_st))
+
+    if cv_data.get("summary"):
+        heading("PROFESSIONAL SUMMARY")
+        story.append(Paragraph(_esc(cv_data["summary"]), body_st))
+
+    if cv_data.get("skills_by_cat"):
+        heading("CORE COMPETENCIES")
+        for cat, names in cv_data["skills_by_cat"]:
+            story.append(Paragraph(f"<b>{_esc(cat)}:</b> {_esc(', '.join(names))}", body_st))
+
+    if cv_data.get("experiences"):
+        heading("PROFESSIONAL EXPERIENCE")
+        for exp in cv_data["experiences"]:
+            story.append(Paragraph(f"<b>{_esc(exp['role'])}</b>  |  {_esc(exp.get('company', ''))}", body_st))
+            meta = "  |  ".join(x for x in [exp.get("location"), exp.get("dates")] if x)
+            if meta:
+                story.append(Paragraph(_esc(meta), meta_st))
+            for b in exp["bullets"]:
+                story.append(Paragraph(f"-  {_esc(b)}", bullet_st))
+
+    edu = cv_data.get("education") or []
+    certs = cv_data.get("certifications") or []
+    if edu or certs:
+        heading("EDUCATION &amp; CERTIFICATIONS")
+        for e in edu:
+            meta = "  |  ".join(x for x in [e.get("school"), e.get("location"), e.get("dates")] if x)
+            story.append(Paragraph(f"<b>{_esc(e.get('degree', ''))}</b>  {_esc(meta)}", body_st))
+        for c in certs:
+            meta = "  |  ".join(x for x in [c.get("name"), c.get("issuer"), c.get("date")] if x)
+            story.append(Paragraph(_esc(meta), body_st))
+
+    if cv_data.get("languages"):
+        heading("LANGUAGES")
+        story.append(Paragraph(_esc(", ".join(cv_data["languages"])), body_st))
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    doc.build(story)
+
+
 def generate_cv(db: Session, job, answers: dict) -> dict:
-    """Full pipeline: gather -> select+reword -> docx -> verify. Returns a dict
-    with file path, filename, used_ai, and verification flags."""
+    """Full pipeline: gather -> select+reword -> PDF + docx -> verify."""
     use_ai = ollama_client.preflight() is None
     data = gather_profile(db)
     cv_data = build_cv_data(data, job, answers, use_ai)
     flags = verify_cv(cv_data, data)
 
-    filename = f"CV_{_slug(cv_data['name'])}_{_slug(job.company)}_{job.id}.docx"
-    path = CV_DIR / filename
-    build_docx(cv_data, path)
+    stem = f"{_title_slug(cv_data['name'])}_{_title_slug(cv_data['title'], fallback='Role')}"
+    out_dir = _output_dir(data["profile"])
+    pdf_path = out_dir / f"{stem}.pdf"
+    docx_path = out_dir / f"{stem}.docx"
+
+    build_pdf(cv_data, pdf_path)
+    build_docx(cv_data, docx_path)
 
     return {
-        "file_path": str(path),
-        "filename": filename,
+        "file_path": str(pdf_path),
+        "filename": f"{stem}.pdf",
+        "docx_path": str(docx_path),
         "target_title": cv_data["title"],
         "used_ai": use_ai,
         "flags": flags,

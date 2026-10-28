@@ -3,8 +3,10 @@ import { api } from "../api.js";
 
 const KINDS = [
   { id: "rss", label: "RSS feed", hint: "Paste a job-board RSS/Atom feed URL" },
+  { id: "company", label: "Company careers page", hint: "Paste a company's careers URL — auto-detects its ATS" },
   { id: "greenhouse", label: "Greenhouse", hint: "Company slug, e.g. stripe" },
   { id: "lever", label: "Lever", hint: "Company slug, e.g. netflix" },
+  { id: "ashby", label: "Ashby", hint: "Company slug, e.g. openai" },
   { id: "url", label: "Website URL", hint: "Any careers/job page (best-effort)" },
 ];
 

@@ -41,6 +41,9 @@ class Profile(Base):
     notice_period: Mapped[str] = mapped_column(String, default="")
     salary_expectation_usd: Mapped[str] = mapped_column(String, default="")
     salary_expectation_pkr: Mapped[str] = mapped_column(String, default="")
+    # Where generated CV/cover-letter files are saved. Empty = the app's own
+    # data folder (the original behavior).
+    cv_folder: Mapped[str] = mapped_column(String, default="")
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_now, onupdate=_now

@@ -59,6 +59,9 @@ _COLUMN_ADDITIONS = {
         "company_block_list": "JSON",
         "max_age_days": "INTEGER DEFAULT 30",
     },
+    "profile": {
+        "cv_folder": "VARCHAR DEFAULT ''",
+    },
 }
 
 
