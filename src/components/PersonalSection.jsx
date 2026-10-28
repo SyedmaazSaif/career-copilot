@@ -34,8 +34,9 @@ const FIELDS = [
     label: "Folder to save your CVs into",
     group: "CV output",
     mono: true,
+    browse: true,
     placeholder: "/Users/you/Desktop/…/Resume & Career",
-    hint: "Paste the full folder path. Empty = the app's own folder.",
+    hint: "Choose the folder with the button, or paste a path. Empty = the app's own folder.",
   },
 ];
 
@@ -62,6 +63,15 @@ export default function PersonalSection() {
   function update(name, value) {
     setForm((f) => ({ ...f, [name]: value }));
     if (status === "saved") setStatus("ready");
+  }
+
+  async function browseFolder(name) {
+    if (!window.copilot?.pickFolder) {
+      window.alert("Folder picking works in the desktop app.");
+      return;
+    }
+    const path = await window.copilot.pickFolder();
+    if (path) update(name, path);
   }
 
   async function save() {
@@ -99,6 +109,27 @@ export default function PersonalSection() {
                     value={form[f.name] ?? ""}
                     onChange={(e) => update(f.name, e.target.value)}
                   />
+                ) : f.browse ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      className={f.mono ? "mono" : ""}
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => update(f.name, e.target.value)}
+                      placeholder={f.placeholder}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        browseFolder(f.name);
+                      }}
+                    >
+                      Browse…
+                    </button>
+                  </div>
                 ) : (
                   <input
                     className={f.mono ? "mono" : ""}

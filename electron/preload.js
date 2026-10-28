@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("copilot", {
   showItem: (path) => ipcRenderer.invoke("show-item", path),
   // Native file picker for choosing a CV (returns the path, or null).
   pickCv: () => ipcRenderer.invoke("pick-cv"),
+  // Native folder picker for choosing where to save generated CVs.
+  pickFolder: () => ipcRenderer.invoke("pick-folder"),
   // Open a URL in the user's real browser (e.g. the releases page).
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   // One-click update: downloads the new version and refreshes the app.

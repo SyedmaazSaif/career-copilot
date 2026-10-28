@@ -209,6 +209,17 @@ ipcMain.handle("pick-cv", async () => {
   return p;
 });
 
+// Native folder picker for choosing where generated CVs are saved.
+ipcMain.handle("pick-folder", async () => {
+  const win = BrowserWindow.getFocusedWindow();
+  const res = await dialog.showOpenDialog(win, {
+    title: "Choose where to save your CVs",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return res.filePaths[0];
+});
+
 // The apply window's toolbar asks to open the current page in the real browser.
 ipcMain.handle("open-external", (_event, url) => {
   if (/^https?:\/\//i.test(url)) shell.openExternal(url);
