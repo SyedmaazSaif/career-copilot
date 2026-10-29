@@ -261,6 +261,18 @@ class CustomSourceOut(ORMModel):
     enabled: bool
 
 
+class SourceResolveIn(BaseModel):
+    name: str = ""
+
+
+class SourceResolveOut(BaseModel):
+    found: bool
+    url: str = ""
+    kind: str = ""
+    value: str = ""
+    label: str = ""
+
+
 # ---- Add job by URL ----
 class AddJobByUrl(BaseModel):
     url: str

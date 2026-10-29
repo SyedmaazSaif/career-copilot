@@ -7,11 +7,15 @@ from .. import taxonomy
 from ..db import get_db
 from ..models import CustomSource, Job, SearchConfig
 from ..scrapers import ALL_SOURCES, DEFAULT_QUERIES
+from ..company_site import find_company_site
+from ..custom_scrapers import _detect_ats
 from ..schemas import (
     CustomSourceIn,
     CustomSourceOut,
     SearchConfigIn,
     SearchConfigOut,
+    SourceResolveIn,
+    SourceResolveOut,
 )
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -137,6 +141,23 @@ def add_source(payload: CustomSourceIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(src)
     return src
+
+
+@router.post("/sources/resolve", response_model=SourceResolveOut)
+def resolve_source(payload: SourceResolveIn):
+    """Find a company's careers page from just its name (via the existing
+    search-engine resolver), then detect its job system (Greenhouse/Lever/Ashby)
+    so the frontend can offer a one-tap add. Pure lookup — nothing is saved."""
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(422, "name is required")
+    url = find_company_site("", name)
+    if not url:
+        return SourceResolveOut(found=False)
+    kind, slug = _detect_ats(url)
+    if kind:
+        return SourceResolveOut(found=True, url=url, kind=kind, value=slug, label=name)
+    return SourceResolveOut(found=True, url=url, kind="company", value=url, label=name)
 
 
 @router.put("/sources/{source_id}", response_model=CustomSourceOut)

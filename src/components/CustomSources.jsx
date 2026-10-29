@@ -15,6 +15,9 @@ export default function CustomSources() {
   const [error, setError] = useState(null);
   const [draft, setDraft] = useState({ kind: "rss", value: "", label: "" });
   const [adding, setAdding] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved] = useState(null);
 
   async function load() {
     try {
@@ -55,6 +58,38 @@ export default function CustomSources() {
       await load();
     } catch (e) {
       setError(e.message);
+    }
+  }
+  async function findCompany() {
+    const name = companyName.trim();
+    if (!name) return;
+    setResolving(true);
+    setResolved(null);
+    setError(null);
+    try {
+      setResolved(await api.post("/api/settings/sources/resolve", { name }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResolving(false);
+    }
+  }
+  async function addResolved() {
+    if (!resolved || !resolved.found) return;
+    setAdding(true);
+    try {
+      await api.post("/api/settings/sources", {
+        kind: resolved.kind,
+        value: resolved.value,
+        label: resolved.label,
+      });
+      setResolved(null);
+      setCompanyName("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -100,6 +135,31 @@ export default function CustomSources() {
           Add source
         </button>
       </div>
+
+      <div className="source-add" style={{ marginTop: 10 }}>
+        <input
+          placeholder="Find a company by name — e.g. Stripe"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && findCompany()}
+        />
+        <button className="btn-secondary" onClick={findCompany} disabled={resolving || !companyName.trim()}>
+          {resolving ? "Searching…" : "Find company"}
+        </button>
+      </div>
+      {resolved &&
+        (resolved.found ? (
+          <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span className="mono" style={{ fontSize: 12, color: "#667284" }}>Found:</span>
+            <strong>{resolved.label}</strong>
+            <span className="mono" style={{ fontSize: 12, color: "#667284" }}>{resolved.url}</span>
+            <button className="btn-secondary" onClick={addResolved} disabled={adding}>Add</button>
+          </div>
+        ) : (
+          <div className="banner error" style={{ marginTop: 10 }}>
+            Couldn't find a careers page for that name. Try the full company name, or add it manually above.
+          </div>
+        ))}
 
       {sources && sources.length > 0 && (
         <ul className="record-list" style={{ marginTop: 12 }}>
