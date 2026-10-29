@@ -18,6 +18,9 @@
 - **Arc-style browser (files)** — `electron/main.js`, `electron/apply-preload.js`
   and the inline script in `electron/apply-window.html` pass `node --check`, and
   the frontend still builds cleanly. The window itself needs a real launch.
+- **Browser architecture** — rebuilt on `WebContentsView` (one managed view per
+  tab, owned by the main process) instead of the deprecated `<webview>` tag,
+  which was causing pages to fail to render.
 
 ## Partial / unproven
 - The desktop app was not launched in this environment — no GUI click-through.

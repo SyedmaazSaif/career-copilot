@@ -4,6 +4,17 @@
 Make the "Apply" window feel like Arc: a vertical sidebar of tabs, pinned
 job boards, and a calm, minimal toolbar — plus secure local logins.
 
+## Architecture (why it's built this way)
+The browser is **not** built on Electron's deprecated `<webview>` tag, which is
+fragile and was causing pages to fail to render. Instead, the main process
+(`electron/main.js`) owns one `WebContentsView` per tab — the same pattern a
+real multi-tab browser uses. The apply window's own page (`apply-window.html`)
+is only the chrome (sidebar + toolbar). The main process is the source of truth
+for tabs and pushes a state object (`apply:state`) to the chrome, which renders
+it and sends back user intents (`apply:activate`, `apply:navigate`,
+`apply:back`, …). Pages, profile autofill, and login fill all run inside each
+tab's webContents, managed from the main process.
+
 ## Scope (first version)
 1. **Sidebar with tabs** — keep several job pages open at once and click
    between them. The apply window becomes a single reused window; each job the
