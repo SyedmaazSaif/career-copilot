@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell, safeStorage } = require("electron");
 const { spawn, execFile } = require("child_process");
 const fs = require("fs");
 const os = require("os");
@@ -132,16 +132,32 @@ function waitForBackend(timeoutMs = 20000) {
   });
 }
 
-// In-app browser: open a job's page in a native window inside the app so the
-// user applies without leaving career-copilot. The window hosts a webview with
-// a small toolbar (back / forward / reload / open in system browser).
-const applyWindows = new Set();
+// In-app browser: an Arc-style window with a tab sidebar, pinned job boards,
+// and secure local logins. One window is reused — each job opens as a new tab
+// instead of a new window.
+let applyWindow = null;
+
+function sendApplyTab(win, targetUrl, cvPath) {
+  win.webContents.send("apply-open-tab", { url: targetUrl, cvPath: cvPath || null });
+}
 
 function openApplyWindow(targetUrl, cvPath) {
   if (!/^https?:\/\//i.test(targetUrl)) return; // only real web pages
+
+  // Reuse the existing apply window: a second job opens as another tab.
+  if (applyWindow && !applyWindow.isDestroyed()) {
+    if (applyWindow.isMinimized()) applyWindow.restore();
+    applyWindow.show();
+    applyWindow.focus();
+    sendApplyTab(applyWindow, targetUrl, cvPath);
+    return;
+  }
+
   const win = new BrowserWindow({
-    width: 1100,
-    height: 800,
+    width: 1200,
+    height: 820,
+    minWidth: 760,
+    minHeight: 560,
     backgroundColor: "#EDEFF3",
     title: "Apply",
     autoHideMenuBar: true,
@@ -165,20 +181,20 @@ function openApplyWindow(targetUrl, cvPath) {
     }
   });
   win.webContents.on("did-finish-load", () => {
-    console.log("[apply] shell loaded ok; sending url");
-    win.webContents.send("apply-url", targetUrl);
-    if (cvPath) win.webContents.send("apply-cv", cvPath);
+    console.log("[apply] shell loaded ok; sending first tab");
+    sendApplyTab(win, targetUrl, cvPath);
   });
-  // Log where the inner job-page (webview) actually navigates, so a blank page
-  // is distinguishable from the real page.
+  // Log where the inner job-pages (webviews) actually navigate.
   win.webContents.on("did-attach-webview", (_e, wc) => {
     wc.on("did-navigate", (_ev, u) => console.log(`[apply] job page navigated to ${u}`));
     wc.on("did-fail-load", (_ev, code, desc, u) => {
       if (code !== -3) console.error(`[apply] job page failed ${u}: ${code} ${desc}`);
     });
   });
-  applyWindows.add(win);
-  win.on("closed", () => applyWindows.delete(win));
+  applyWindow = win;
+  win.on("closed", () => {
+    if (applyWindow === win) applyWindow = null;
+  });
 }
 
 ipcMain.handle("open-apply", (_event, url, cvPath) => {
@@ -218,6 +234,94 @@ ipcMain.handle("pick-folder", async () => {
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];
+});
+
+// ---------------------------------------------------------------------------
+// Local logins for the in-app browser.
+//
+// HUMAN REVIEW NEEDED: this code stores and retrieves website passwords.
+// Passwords are encrypted with Electron safeStorage (macOS Keychain / Windows
+// DPAPI) and only the encrypted blob is written to disk; the plaintext never
+// touches a file or log. A login is keyed by origin (scheme+host+port), filled
+// only on that exact origin, only on the user's click, and never auto-submitted.
+// ---------------------------------------------------------------------------
+function loginsFile() {
+  return path.join(app.getPath("userData"), "logins.json");
+}
+
+function readLogins() {
+  try {
+    return JSON.parse(fs.readFileSync(loginsFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeLogins(data) {
+  fs.writeFileSync(loginsFile(), JSON.stringify(data, null, 2), { mode: 0o600 });
+}
+
+// Reduce a URL to its origin (e.g. https://www.linkedin.com). Anything that is
+// not a plain http(s) URL is rejected so a page can't smuggle in a bogus key.
+function normalizeOrigin(url) {
+  if (typeof url !== "string") return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle("login-save", (_event, payload) => {
+  const origin = normalizeOrigin(payload && payload.origin);
+  const username = payload && typeof payload.username === "string" ? payload.username : "";
+  const password = payload && typeof payload.password === "string" ? payload.password : "";
+  if (!origin || !password) return { ok: false, error: "Nothing to save" };
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, error: "Secure storage is unavailable on this device" };
+  }
+  const data = readLogins();
+  // HUMAN REVIEW NEEDED: password encrypted before it is persisted.
+  data[origin] = {
+    username,
+    passwordB64: safeStorage.encryptString(password).toString("base64"),
+  };
+  writeLogins(data);
+  return { ok: true };
+});
+
+ipcMain.handle("login-get", (_event, url) => {
+  const origin = normalizeOrigin(url);
+  if (!origin) return null;
+  const entry = readLogins()[origin];
+  if (!entry || !safeStorage.isEncryptionAvailable()) return null;
+  try {
+    // HUMAN REVIEW NEEDED: password is decrypted only at fill time, in memory.
+    return {
+      username: entry.username || "",
+      password: safeStorage.decryptString(Buffer.from(entry.passwordB64, "base64")),
+    };
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle("login-list", () => {
+  return Object.entries(readLogins()).map(([origin, entry]) => ({
+    origin,
+    username: entry.username || "",
+  }));
+});
+
+ipcMain.handle("login-delete", (_event, url) => {
+  const origin = normalizeOrigin(url);
+  if (!origin) return { ok: false };
+  const data = readLogins();
+  delete data[origin];
+  writeLogins(data);
+  return { ok: true };
 });
 
 // The apply window's toolbar asks to open the current page in the real browser.
