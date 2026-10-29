@@ -462,6 +462,22 @@ ipcMain.handle("pick-cv", async () => {
   return p;
 });
 
+// Native file picker for importing passwords from a CSV exported by another
+// browser (Chrome / Safari / Firefox all export passwords to a CSV file).
+ipcMain.handle("pick-import-file", async () => {
+  const win = BrowserWindow.getFocusedWindow();
+  const res = await dialog.showOpenDialog(win, {
+    title: "Import passwords from a CSV file",
+    properties: ["openFile"],
+    filters: [
+      { name: "CSV files", extensions: ["csv"] },
+      { name: "All files", extensions: ["*"] },
+    ],
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return res.filePaths[0];
+});
+
 // Native folder picker for choosing where generated CVs are saved.
 ipcMain.handle("pick-folder", async () => {
   const win = BrowserWindow.getFocusedWindow();
@@ -568,6 +584,87 @@ ipcMain.handle("login-delete", (_event, url) => {
   delete data[origin];
   writeLogins(data);
   return { ok: true };
+});
+
+// Parse CSV into rows of fields, honouring quoted fields (commas, newlines and
+// doubled quotes inside "..."). Handles both Chrome and Firefox password exports.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field); field = "";
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = "";
+      rows.push(row); row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// HUMAN REVIEW NEEDED: imports website passwords from a user-chosen CSV file.
+// Each password is encrypted with safeStorage before it is written; nothing is
+// logged. Rows without a usable URL or password are skipped.
+ipcMain.handle("login-import", (_event, filePath) => {
+  if (typeof filePath !== "string" || !filePath.trim()) {
+    return { ok: false, error: "No file chosen" };
+  }
+  let text;
+  try {
+    text = fs.readFileSync(filePath, "utf8");
+  } catch (e) {
+    return { ok: false, error: "Could not read that file" };
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, error: "Secure storage is unavailable on this device" };
+  }
+  const rows = parseCsv(text).filter((r) => r.some((c) => c.trim() !== ""));
+  if (rows.length < 1) return { ok: false, error: "The file looks empty" };
+
+  // Map columns from a header row when present, else assume Chrome's order.
+  const header = rows[0].map((c) => c.toLowerCase().replace(/[\s"']/g, ""));
+  const idx = (n) => header.indexOf(n);
+  let urlIdx = idx("url"), userIdx = idx("username"), pwdIdx = idx("password");
+  let startRow = 1;
+  if (urlIdx < 0 || pwdIdx < 0) {
+    // No recognisable header — assume name,url,username,password (Chrome).
+    urlIdx = 1; userIdx = 2; pwdIdx = 3; startRow = 0;
+  }
+
+  const data = readLogins();
+  let imported = 0;
+  let skipped = 0;
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    const rawUrl = (r[urlIdx] || "").trim();
+    const username = (r[userIdx] || "").trim();
+    const password = r[pwdIdx] || "";
+    const origin = normalizeOrigin(rawUrl);
+    if (!origin || !password) { skipped++; continue; }
+    data[origin] = {
+      username,
+      passwordB64: safeStorage.encryptString(password).toString("base64"),
+    };
+    imported++;
+  }
+  writeLogins(data);
+  return { ok: true, imported, skipped };
 });
 
 // ---------------------------------------------------------------------------

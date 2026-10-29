@@ -151,6 +151,9 @@
       }
       .login-del:hover { background: #fdf3f5; }
       .logins-panel .empty { color: var(--slate-muted); font-size: 13px; padding: 8px 2px; }
+      .import-status { font-size: 12px; padding: 0 2px 8px; display: none; }
+      .import-status.ok { display: block; color: var(--petrol); }
+      .import-status.err { display: block; color: var(--rose); }
     </style>
   </head>
   <body>
@@ -187,6 +190,8 @@
 
     <div class="logins-panel" id="loginsPanel">
       <h3>Saved logins</h3>
+      <button class="sbtn" id="importBtn" style="width:100%; margin-bottom:8px; justify-content:center;" title="Export passwords from Chrome/Safari/Firefox as a CSV file, then pick it here">Import from file…</button>
+      <div class="import-status" id="importStatus"></div>
       <div id="loginsList"></div>
     </div>
 
@@ -213,6 +218,8 @@
       const attachBtn = document.getElementById("attachCv");
       const loginsPanel = document.getElementById("loginsPanel");
       const loginsList = document.getElementById("loginsList");
+      const importBtn = document.getElementById("importBtn");
+      const importStatus = document.getElementById("importStatus");
 
       let state = { tabs: [], activeId: null, savedLogin: null };
 
@@ -370,7 +377,24 @@
       document.getElementById("loginsBtn").onclick = () => {
         const willShow = !loginsPanel.classList.contains("show");
         loginsPanel.classList.toggle("show", willShow);
+        importStatus.className = "import-status";
         if (willShow) renderLogins();
+      };
+
+      importBtn.onclick = async () => {
+        const path = await applyBridge.pickImportFile();
+        if (!path) return;
+        const r = await applyBridge.importLogins(path);
+        if (r && r.ok) {
+          importStatus.className = "import-status ok";
+          importStatus.textContent =
+            "Imported " + r.imported + " login" + (r.imported === 1 ? "" : "s") +
+            (r.skipped ? " · skipped " + r.skipped : "") + ".";
+        } else {
+          importStatus.className = "import-status err";
+          importStatus.textContent = (r && r.error) || "Import failed.";
+        }
+        renderLogins();
       };
 
       // ---- boot ----

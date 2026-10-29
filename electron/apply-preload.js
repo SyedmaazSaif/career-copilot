@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld("applyBridge", {
   saveLogin: () => ipcRenderer.invoke("apply:save-login"),
   listLogins: () => ipcRenderer.invoke("login-list"),
   deleteLogin: (url) => ipcRenderer.invoke("login-delete", url),
+  // Import passwords from a CSV exported by another browser.
+  pickImportFile: () => ipcRenderer.invoke("pick-import-file"),
+  importLogins: (path) => ipcRenderer.invoke("login-import", path),
 
   // Open the current page in the real browser.
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
