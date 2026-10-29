@@ -239,6 +239,7 @@ function createTabView(tab, url) {
 
   wc.on("did-navigate", (_e, u) => {
     if (u && u.startsWith("data:")) return; // our own error page — keep the real URL
+    console.log("[apply] tab navigated to", u);
     tab.url = u;
     tab.showingError = false;
     sendState();
@@ -260,6 +261,7 @@ function createTabView(tab, url) {
   wc.on("did-fail-load", (_e, code, desc, validatedURL, isMainFrame) => {
     if (code === -3) return; // aborted (redirect) — not a real failure
     if (!isMainFrame) return;
+    console.error("[apply] tab failed to load", validatedURL, desc);
     tab.showingError = true;
     if (validatedURL) tab.url = validatedURL;
     wc.loadURL(errorPageDataUrl(tab.url, desc)).catch(() => {});
