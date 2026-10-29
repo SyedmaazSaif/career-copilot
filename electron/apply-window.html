@@ -17,7 +17,7 @@
       html, body { margin: 0; height: 100%; font-family: Inter, system-ui, -apple-system, sans-serif; }
       body { display: flex; background: var(--steel); color: var(--ink); overflow: hidden; }
 
-      /* ---------------- sidebar ---------------- */
+      /* ---------------- sidebar (232px — keep in sync with main.js) ---------------- */
       .sidebar {
         width: 232px; flex: none; display: flex; flex-direction: column;
         background: var(--sidebar-bg); border-right: 1px solid var(--line);
@@ -67,6 +67,7 @@
       .toolbar {
         display: flex; align-items: center; gap: 8px; padding: 8px 12px;
         background: #fff; border-bottom: 1px solid var(--line); flex: none;
+        height: 49px; /* keep in sync with main.js TOOLBAR_HEIGHT */
       }
       .tbtn {
         border: 1px solid var(--line); background: #fff; color: var(--ink);
@@ -97,12 +98,6 @@
         font-size: 12.5px; font-weight: 600; white-space: nowrap; flex: none;
       }
       .autofill:hover { background: rgba(14,124,123,0.18); }
-      .choose {
-        border: 1px solid var(--line); background: #fff; color: var(--ink);
-        border-radius: 7px; padding: 0 12px; height: 32px; cursor: pointer;
-        font-size: 12.5px; font-weight: 500; white-space: nowrap; flex: none;
-      }
-      .choose:hover { background: #f4f6f9; }
       .open-ext {
         border: 1px solid var(--petrol); background: var(--petrol); color: #fff;
         border-radius: 7px; padding: 0 12px; height: 32px; cursor: pointer;
@@ -110,18 +105,15 @@
       }
       .open-ext:hover { filter: brightness(1.05); }
 
-      /* ---------------- stage ---------------- */
+      /* ---------------- stage (content area — the active tab view covers this) ---------------- */
       .stage { flex: 1; position: relative; }
-      webview { position: absolute; inset: 0; border: none; display: none; }
-      .error, .start {
+      .start {
         position: absolute; inset: 0; display: none; flex-direction: column;
         align-items: center; justify-content: center; gap: 14px; text-align: center;
-        padding: 30px; background: var(--steel); z-index: 10;
+        padding: 30px; background: var(--steel);
       }
-      .error.show { display: flex; }
       .start.show { display: flex; }
-      .error h2, .start h1 { margin: 0; font-size: 17px; color: var(--ink); }
-      .error p { margin: 0; color: var(--slate-muted); font-size: 13px; max-width: 46ch; }
+      .start h1 { margin: 0; font-size: 17px; color: var(--ink); }
       .start input {
         width: min(420px, 80%); font-size: 14px; padding: 10px 14px;
         border: 1px solid var(--line); border-radius: 10px; outline: none; background: #fff;
@@ -181,21 +173,10 @@
         <button class="save" id="saveLogin" title="Save this site's login (encrypted on your Mac)">Save login</button>
         <button class="autofill" id="autofill" title="Fill this application form from your profile">⤵ Autofill</button>
         <button class="autofill" id="attachCv" title="Reveal the CV made for this job, ready to drag in">📎 Attach CV</button>
-        <button class="choose" id="pickCv" title="Choose a different CV file from your computer">Choose file</button>
         <button class="open-ext" id="openExt">Open ↗</button>
       </div>
 
       <div class="stage" id="stage">
-        <!-- persist: partition keeps cookies + logins on disk, so signing in once
-             stays signed in on future launches. Each tab is its own webview that
-             shares this partition, so they share the same cookies. -->
-
-        <div class="error" id="error">
-          <h2>This page could not open inside the app</h2>
-          <p id="errdetail">The site may block embedding. You can still open it in your normal browser.</p>
-          <button class="open-ext" id="openExt2">Open in system browser</button>
-        </div>
-
         <div class="start" id="startPage">
           <h1>New tab</h1>
           <input id="startUrl" placeholder="Search or enter address" spellcheck="false" />
@@ -219,13 +200,10 @@
         { label: "Remote OK", url: "https://remoteok.com/", glyph: "r", color: "#f48200" },
       ];
 
-      const stage = document.getElementById("stage");
       const tabsEl = document.getElementById("tabs");
       const pinnedEl = document.getElementById("pinned");
       const startPage = document.getElementById("startPage");
       const startGrid = document.getElementById("startGrid");
-      const errorBox = document.getElementById("error");
-      const errdetail = document.getElementById("errdetail");
       const addr = document.getElementById("addr");
       const back = document.getElementById("back");
       const forward = document.getElementById("forward");
@@ -233,22 +211,18 @@
       const saveBtn = document.getElementById("saveLogin");
       const autofillBtn = document.getElementById("autofill");
       const attachBtn = document.getElementById("attachCv");
-      const pickBtn = document.getElementById("pickCv");
       const loginsPanel = document.getElementById("loginsPanel");
       const loginsList = document.getElementById("loginsList");
 
-      let tabs = [];
-      let activeId = null;
-      let nextId = 1;
+      let state = { tabs: [], activeId: null, savedLogin: null };
 
-      function activeTab() {
-        return tabs.find((t) => t.id === activeId) || null;
-      }
       function escapeHtml(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
           ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
       }
-
+      function activeTab() {
+        return state.tabs.find((t) => t.id === state.activeId) || null;
+      }
       function flash(btn, msg) {
         const original = btn.dataset.label || btn.textContent;
         btn.dataset.label = original;
@@ -260,113 +234,19 @@
         }, 1800);
       }
 
-      // ---------------- tab management ----------------
-      function wireWebview(tab, el) {
-        el.addEventListener("did-navigate", () => {
-          tab.url = el.getURL() || tab.url;
-          tab.blank = false;
-          renderSidebar();
-          if (tab.id === activeId) { updateToolbar(); hideError(); maybeOfferLogin(); }
-        });
-        el.addEventListener("did-navigate-in-page", () => {
-          tab.url = el.getURL() || tab.url;
-          if (tab.id === activeId) updateToolbar();
-        });
-        el.addEventListener("page-title-updated", (e) => {
-          tab.title = e.title || tab.url || "New Tab";
-          renderSidebar();
-        });
-        el.addEventListener("page-favicon-updated", (e) => {
-          tab.favicon = (e.favicons && e.favicons[0]) || null;
-          renderSidebar();
-        });
-        el.addEventListener("dom-ready", () => {
-          if (tab.id === activeId) { hideError(); updateToolbar(); maybeOfferLogin(); }
-        });
-        el.addEventListener("did-fail-load", (e) => {
-          if (e.errorCode === -3) return; // aborted (redirect) — not a real failure
-          if (tab.id === activeId) showError(e.errorDescription);
-        });
-      }
-
-      function attachWebview(tab, url) {
-        const el = document.createElement("webview");
-        el.setAttribute("partition", "persist:apply");
-        el.setAttribute("allowpopups", "");
-        el.className = "webview";
-        stage.appendChild(el);
-        tab.el = el;
-        tab.blank = false;
-        tab.url = url;
-        el.src = url;
-        wireWebview(tab, el);
-        updateVisibility();
-      }
-
-      function addTab(url, cvPath, opts) {
-        opts = opts || {};
-        const tab = {
-          id: nextId++, url: url || null, title: url || "New Tab",
-          favicon: null, cvPath: cvPath || null, el: null, blank: !url,
-        };
-        tabs.push(tab);
-        if (url) attachWebview(tab, url);
-        renderSidebar();
-        if (opts.activate !== false) setActive(tab.id);
-        return tab;
-      }
-
-      function closeTab(id) {
-        const idx = tabs.findIndex((t) => t.id === id);
-        if (idx < 0) return;
-        const tab = tabs[idx];
-        if (tab.el) tab.el.remove();
-        tabs.splice(idx, 1);
-        if (tabs.length === 0) {
-          addTab(null, null); // keep a blank new tab so the window is never empty
-        } else if (activeId === id) {
-          setActive(tabs[Math.min(idx, tabs.length - 1)].id);
-        } else {
-          renderSidebar();
-        }
-      }
-
-      function setActive(id) {
-        activeId = id;
-        updateVisibility();
-        updateToolbar();
-        renderSidebar();
-        hideError();
-        maybeOfferLogin();
-      }
-
-      function updateVisibility() {
-        tabs.forEach((t) => { if (t.el) t.el.style.display = t.id === activeId ? "block" : "none"; });
-        const t = activeTab();
-        startPage.classList.toggle("show", !!t && t.blank);
-      }
-
-      function updateToolbar() {
-        const t = activeTab();
-        if (!t) { addr.value = ""; back.disabled = true; forward.disabled = true; return; }
-        addr.value = t.url || "";
-        if (t.el) {
-          try { back.disabled = !t.el.canGoBack(); forward.disabled = !t.el.canGoForward(); }
-          catch (e) { back.disabled = true; forward.disabled = true; }
-        } else {
-          back.disabled = true; forward.disabled = true;
-        }
-      }
-
-      function renderSidebar() {
+      function render() {
+        // sidebar tabs
         tabsEl.innerHTML = "";
-        tabs.forEach((t) => {
+        state.tabs.forEach((t) => {
           const row = document.createElement("div");
-          row.className = "tab" + (t.id === activeId ? " active" : "");
+          row.className = "tab" + (t.id === state.activeId ? " active" : "");
           const fav = document.createElement("span");
           fav.className = "fav";
-          if (t.favicon) { fav.innerHTML = '<img src="' + escapeHtml(t.favicon) + '" alt="" />'; }
-          else { fav.textContent = (t.title || "•").charAt(0).toUpperCase(); }
+          if (t.favicon) {
+            fav.innerHTML = '<img src="' + escapeHtml(t.favicon) + '" alt="" />';
+          } else {
+            fav.textContent = (t.title || "•").charAt(0).toUpperCase();
+          }
           const title = document.createElement("span");
           title.className = "t-title";
           title.textContent = t.title || t.url || "New Tab";
@@ -374,11 +254,38 @@
           close.className = "close";
           close.textContent = "✕";
           close.title = "Close tab";
-          close.onclick = (e) => { e.stopPropagation(); closeTab(t.id); };
+          close.onclick = (e) => { e.stopPropagation(); applyBridge.closeTab(t.id); };
           row.appendChild(fav); row.appendChild(title); row.appendChild(close);
-          row.onclick = () => setActive(t.id);
+          row.onclick = () => applyBridge.activate(t.id);
           tabsEl.appendChild(row);
         });
+
+        // toolbar (reflects active tab)
+        const a = activeTab();
+        if (a) {
+          addr.value = a.url || "";
+          back.disabled = !a.canGoBack;
+          forward.disabled = !a.canGoForward;
+        } else {
+          addr.value = "";
+          back.disabled = true;
+          forward.disabled = true;
+        }
+
+        // new-tab page overlay
+        const showNew = !!a && a.isNew;
+        startPage.classList.toggle("show", showNew);
+
+        // fill-login button state
+        if (state.savedLogin && state.savedLogin.username) {
+          fillBtn.disabled = false;
+          fillBtn.textContent = "Fill login";
+          fillBtn.title = "Fill the saved login for " + state.savedLogin.username;
+        } else {
+          fillBtn.disabled = true;
+          fillBtn.textContent = "No saved login";
+          fillBtn.title = "No login saved for this site yet";
+        }
       }
 
       function renderPinned() {
@@ -387,260 +294,23 @@
         PINNED.forEach((p) => {
           const a = document.createElement("button");
           a.className = "pin"; a.style.background = p.color; a.textContent = p.glyph; a.title = p.label;
-          a.onclick = () => addTab(p.url);
+          a.onclick = () => applyBridge.openUrl(p.url);
           pinnedEl.appendChild(a);
           const tile = document.createElement("button");
           tile.className = "tile";
           tile.innerHTML = '<span class="tile-dot" style="background:' + p.color + '">' + p.glyph + '</span><span>' + p.label + "</span>";
-          tile.onclick = () => addTab(p.url);
+          tile.onclick = () => applyBridge.openUrl(p.url);
           startGrid.appendChild(tile);
         });
       }
 
-      // ---------------- navigation ----------------
-      function normalizeInput(raw) {
-        let s = String(raw || "").trim();
-        if (!s) return null;
-        if (/^https?:\/\//i.test(s)) return s;
-        if (/^[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(s)) return "https://" + s;
-        return "https://www.google.com/search?q=" + encodeURIComponent(s);
-      }
-
-      function openUrl(raw) {
-        const u = normalizeInput(raw);
-        if (!u) return;
-        const t = activeTab();
-        if (!t) return;
-        if (!t.el) {
-          attachWebview(t, u);
-        } else if (t.el.loadURL) {
-          t.el.loadURL(u);
-          t.url = u; t.blank = false;
-        } else {
-          t.el.src = u;
-          t.url = u; t.blank = false;
-        }
-        renderSidebar();
-        updateToolbar();
-      }
-
-      function showError(desc) {
-        errdetail.textContent =
-          "This site may block embedding (" + (desc || "load error") +
-          "). You can still open it in your normal browser.";
-        errorBox.classList.add("show");
-      }
-      function hideError() { errorBox.classList.remove("show"); }
-
-      function openSystem() {
-        const t = activeTab();
-        let u = "";
-        if (t && t.el) { try { u = t.el.getURL(); } catch (e) { u = ""; } }
-        if (!u) u = t ? t.url : "";
-        if (window.applyBridge && window.applyBridge.openExternal) window.applyBridge.openExternal(u);
-      }
-
-      document.getElementById("back").onclick = () => { const t = activeTab(); if (t && t.el) { try { t.el.canGoBack() && t.el.goBack(); } catch (e) {} } };
-      document.getElementById("forward").onclick = () => { const t = activeTab(); if (t && t.el) { try { t.el.canGoForward() && t.el.goForward(); } catch (e) {} } };
-      document.getElementById("reload").onclick = () => { const t = activeTab(); if (t && t.el) { try { t.el.reload(); } catch (e) {} } };
-      document.getElementById("openExt").onclick = openSystem;
-      document.getElementById("openExt2").onclick = openSystem;
-      document.getElementById("newTab").onclick = () => addTab(null, null);
-      addr.addEventListener("keydown", (e) => { if (e.key === "Enter") openUrl(addr.value); });
-      document.getElementById("startUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") openUrl(e.currentTarget.value); });
-
-      // The main process sends each job as a tab once the shell is ready.
-      if (window.applyBridge && window.applyBridge.onOpenTab) {
-        window.applyBridge.onOpenTab((tab) => {
-          const url = tab && tab.url;
-          if (!url || !/^https?:\/\//i.test(url)) return;
-          const cvPath = tab && tab.cvPath;
-          const t = activeTab();
-          if (t && t.blank && tabs.length === 1) {
-            t.cvPath = cvPath || null;
-            attachWebview(t, url);
-            setActive(t.id);
-          } else {
-            addTab(url, cvPath || null);
-          }
-        });
-      }
-
-      // ---------------- profile autofill (unchanged behaviour, active tab) -------
-      function buildFillScript(data) {
-        return "(function(){" +
-          "var d=" + JSON.stringify(data) + ";" +
-          "var pats=[" +
-            "{k:['email'],re:/e-?mail/i,ex:/confirm/i}," +
-            "{k:['phone'],re:/phone|mobile|telephone|^tel$/i}," +
-            "{k:['firstName'],re:/first[ _-]*name|given[ _-]*name|fname/i}," +
-            "{k:['lastName'],re:/last[ _-]*name|surname|family[ _-]*name|lname/i}," +
-            "{k:['fullName'],re:/full[ _-]*name|your[ _-]*name|applicant[ _-]*name|candidate[ _-]*name|^name$|legal[ _-]*name/i,ex:/user|company|file/i}," +
-            "{k:['linkedin'],re:/linked-?in/i}," +
-            "{k:['portfolio'],re:/portfolio|website|personal[ _-]*site|github|^url$/i,ex:/company/i}," +
-            "{k:['city'],re:/^city$|town/i}," +
-            "{k:['country'],re:/country/i}," +
-            "{k:['location'],re:/location|current[ _-]*address|^address$/i,ex:/email|ip|line2/i}," +
-            "{k:['salary'],re:/salary|compensation|expected[ _-]*pay|desired[ _-]*pay/i}," +
-            "{k:['notice'],re:/notice[ _-]*period|availab/i}," +
-            "{k:['workAuth'],re:/authoriz|visa|sponsor|work[ _-]*permit|eligib|right[ _-]*to[ _-]*work/i}" +
-          "];" +
-          "function lbl(el){var t='';try{if(el.id){var l=document.querySelector('label[for=\"'+(window.CSS&&CSS.escape?CSS.escape(el.id):el.id)+'\"]');if(l)t+=' '+l.textContent;}}catch(e){}var p=el.closest&&el.closest('label');if(p)t+=' '+p.textContent;return t;}" +
-          "function sig(el){return [el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('autocomplete'),lbl(el)].filter(Boolean).join(' ').toLowerCase();}" +
-          "function setVal(el,val){try{var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;var s=Object.getOwnPropertyDescriptor(proto,'value').set;s.call(el,val);}catch(e){el.value=val;}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
-          "var skip=['password','hidden','file','checkbox','radio','submit','button','search','range','color','image','reset'];" +
-          "var count=0;" +
-          "function fillDoc(doc){var els=doc.querySelectorAll('input,textarea');Array.prototype.forEach.call(els,function(el){var type=(el.type||'text').toLowerCase();if(skip.indexOf(type)>=0)return;if(el.disabled||el.readOnly)return;if(el.value&&el.value.trim())return;var s=sig(el);if(!s)return;for(var i=0;i<pats.length;i++){var pat=pats[i];if(pat.ex&&pat.ex.test(s))continue;if(pat.re.test(s)){var val='';for(var j=0;j<pat.k.length;j++){if(d[pat.k[j]]){val=d[pat.k[j]];break;}}if(val){setVal(el,val);count++;}break;}}});}" +
-          "fillDoc(document);" +
-          "try{var fr=document.querySelectorAll('iframe');Array.prototype.forEach.call(fr,function(f){try{if(f.contentDocument)fillDoc(f.contentDocument);}catch(e){}});}catch(e){}" +
-          "return count;" +
-        "})();";
-      }
-
-      async function autofill() {
-        const t = activeTab();
-        if (!t || !t.el) { flash(autofillBtn, "No page open"); return; }
-        let profile;
-        try {
-          const res = await fetch("http://127.0.0.1:8000/api/profile");
-          if (!res.ok) throw new Error("profile " + res.status);
-          profile = await res.json();
-        } catch (e) {
-          flash(autofillBtn, "No profile found");
-          return;
-        }
-        const name = (profile.name || "").trim();
-        const parts = name.split(/\s+/).filter(Boolean);
-        const loc = (profile.location || "").split(",").map((s) => s.trim()).filter(Boolean);
-        const data = {
-          fullName: name,
-          firstName: parts[0] || "",
-          lastName: parts.length > 1 ? parts.slice(1).join(" ") : "",
-          email: profile.email || "",
-          phone: profile.phone || "",
-          linkedin: profile.linkedin || "",
-          portfolio: profile.portfolio || "",
-          location: profile.location || "",
-          city: loc[0] || "",
-          country: loc.length > 1 ? loc[loc.length - 1] : "",
-          salary: profile.salary_expectation_usd || "",
-          notice: profile.notice_period || "",
-          workAuth: profile.work_authorization || "",
-        };
-        let count = 0;
-        try {
-          count = await t.el.executeJavaScript(buildFillScript(data), true);
-        } catch (e) {
-          flash(autofillBtn, "Can't fill here");
-          return;
-        }
-        flash(autofillBtn, count > 0 ? "Filled " + count + " field" + (count > 1 ? "s" : "") : "No matching fields");
-      }
-      autofillBtn.onclick = autofill;
-
-      // ---------------- attach CV (active tab) ----------------
-      attachBtn.onclick = () => {
-        const t = activeTab();
-        if (t && t.cvPath && window.applyBridge && window.applyBridge.revealItem) {
-          window.applyBridge.revealItem(t.cvPath);
-        } else {
-          flash(attachBtn, "Generate a CV first");
-        }
-      };
-      pickBtn.onclick = () => {
-        if (window.applyBridge && window.applyBridge.pickCv) window.applyBridge.pickCv();
-      };
-
-      // ---------------- local logins ----------------
-      // HUMAN REVIEW NEEDED: this fills/saves website passwords. The password
-      // is encrypted by the main process (OS keychain) before it is stored, is
-      // filled only on the exact site the user saved it for, only on a click,
-      // and is never auto-submitted.
-      function fillLoginScript(username, password) {
-        return "(function(){" +
-          "var u=" + JSON.stringify(username) + ",p=" + JSON.stringify(password) + ";" +
-          "function setVal(el,val){try{var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;var s=Object.getOwnPropertyDescriptor(proto,'value').set;s.call(el,val);}catch(e){el.value=val;}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
-          "var inputs=document.querySelectorAll('input');" +
-          "var pw=null;for(var i=0;i<inputs.length;i++){if((inputs[i].type||'').toLowerCase()==='password'){pw=inputs[i];break;}}" +
-          "if(!pw)return {found:false};" +
-          "var un=null;" +
-          "for(var j=0;j<inputs.length;j++){var e=inputs[j];var t=(e.type||'').toLowerCase();if(t==='email'){un=e;break;}if(t==='text'||t==='tel'){var s=(e.name+' '+e.id+' '+(e.autocomplete||'')).toLowerCase();if(/user|email|login|account|username/i.test(s)){un=e;break;}}}" +
-          "if(un)setVal(un,u);" +
-          "setVal(pw,p);" +
-          "return {found:true};" +
-        "})();";
-      }
-
-      function readLoginScript() {
-        return "(function(){" +
-          "function get(el){return el.value||'';}" +
-          "var inputs=Array.prototype.slice.call(document.querySelectorAll('input'));" +
-          "var pw=null;for(var i=0;i<inputs.length;i++){if((inputs[i].type||'').toLowerCase()==='password'&&inputs[i].value){pw=inputs[i];break;}}" +
-          "if(!pw)return {found:false};" +
-          "var un=null;" +
-          "for(var j=0;j<inputs.length;j++){var e=inputs[j];var t=(e.type||'').toLowerCase();var s=(e.name+' '+e.id+' '+(e.autocomplete||'')+' '+(e.placeholder||'')).toLowerCase();if(t==='email'){un=e;break;}if(t==='text'&&/user|email|login|account|username/i.test(s)){un=e;break;}}" +
-          "return {found:true,username:un?get(un):'',password:get(pw)};" +
-        "})();";
-      }
-
-      function setFillState(login) {
-        if (login && login.username) {
-          fillBtn.disabled = false;
-          fillBtn.textContent = "Fill login";
-          fillBtn.title = "Fill the saved login for " + login.username;
-        } else {
-          fillBtn.disabled = true;
-          fillBtn.textContent = "No saved login";
-          fillBtn.title = "No login saved for this site yet";
-        }
-      }
-
-      async function maybeOfferLogin() {
-        const t = activeTab();
-        if (!t || !t.el) { setFillState(null); return; }
-        let url = "";
-        try { url = t.el.getURL(); } catch (e) { setFillState(null); return; }
-        if (!/^https?:\/\//i.test(url)) { setFillState(null); return; }
-        try {
-          const login = await window.applyBridge.getLogin(url);
-          setFillState(login);
-        } catch (e) { setFillState(null); }
-      }
-
-      fillBtn.onclick = async () => {
-        const t = activeTab();
-        if (!t || !t.el) { flash(fillBtn, "No page open"); return; }
-        const url = t.el.getURL();
-        if (!url) { flash(fillBtn, "Open a site first"); return; }
-        const login = await window.applyBridge.getLogin(url);
-        if (!login || !login.password) { flash(fillBtn, "No saved login"); return; }
-        let res;
-        try { res = await t.el.executeJavaScript(fillLoginScript(login.username, login.password), true); }
-        catch (e) { flash(fillBtn, "Can't fill here"); return; }
-        flash(fillBtn, res && res.found ? "Filled login" : "No login form found");
-      };
-
-      saveBtn.onclick = async () => {
-        const t = activeTab();
-        if (!t || !t.el) { flash(saveBtn, "No page open"); return; }
-        const url = t.el.getURL();
-        if (!/^https?:\/\//i.test(url)) { flash(saveBtn, "Open a site first"); return; }
-        let creds;
-        try { creds = await t.el.executeJavaScript(readLoginScript(), true); }
-        catch (e) { flash(saveBtn, "Can't read page"); return; }
-        if (!creds || !creds.found || !creds.password) { flash(saveBtn, "Type your password first"); return; }
-        const res = await window.applyBridge.saveLogin(url, creds.username, creds.password);
-        flash(saveBtn, res && res.ok ? "Login saved" : (res && res.error ? res.error : "Couldn't save"));
-        maybeOfferLogin();
-      };
-
       async function renderLogins() {
-        const list = await window.applyBridge.listLogins();
+        const list = await applyBridge.listLogins();
         loginsList.innerHTML = "";
         if (!list || !list.length) {
           const d = document.createElement("div");
           d.className = "empty";
-          d.textContent = "No logins saved yet. Sign in on a site, then tap \"Save login\".";
+          d.textContent = 'No logins saved yet. Sign in on a site, then tap "Save login".';
           loginsList.appendChild(d);
           return;
         }
@@ -656,20 +326,62 @@
           info.appendChild(o); info.appendChild(u);
           const del = document.createElement("button");
           del.className = "login-del"; del.textContent = "Forget";
-          del.onclick = async () => { await window.applyBridge.deleteLogin(item.origin); renderLogins(); maybeOfferLogin(); };
+          del.onclick = async () => { await applyBridge.deleteLogin(item.origin); renderLogins(); };
           row.appendChild(info); row.appendChild(del);
           loginsList.appendChild(row);
         });
       }
+
+      // ---- wire up toolbar ----
+      document.getElementById("back").onclick = () => state.activeId != null && applyBridge.back(state.activeId);
+      document.getElementById("forward").onclick = () => state.activeId != null && applyBridge.forward(state.activeId);
+      document.getElementById("reload").onclick = () => state.activeId != null && applyBridge.reload(state.activeId);
+      document.getElementById("openExt").onclick = () => {
+        const a = activeTab();
+        if (a && a.url) applyBridge.openExternal(a.url);
+      };
+      document.getElementById("newTab").onclick = () => applyBridge.newTab();
+      addr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && state.activeId != null) applyBridge.navigate(state.activeId, addr.value);
+      });
+      document.getElementById("startUrl").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && state.activeId != null) applyBridge.navigate(state.activeId, e.currentTarget.value);
+      });
+
+      fillBtn.onclick = async () => {
+        const r = await applyBridge.fillLogin();
+        if (r && !r.ok) flash(fillBtn, r.msg || "No saved login");
+        else flash(fillBtn, (r && r.msg) || "Filled login");
+      };
+      saveBtn.onclick = async () => {
+        const r = await applyBridge.saveLogin();
+        flash(saveBtn, (r && (r.msg || r.error)) || "Couldn't save");
+      };
+      autofillBtn.onclick = async () => {
+        const r = await applyBridge.autofill();
+        if (r && r.ok) flash(autofillBtn, "Filled " + r.count + " field" + (r.count === 1 ? "" : "s"));
+        else flash(autofillBtn, (r && r.msg) || "No matching fields");
+      };
+      attachBtn.onclick = () => {
+        const a = activeTab();
+        if (a && a.cvPath) applyBridge.reveal(a.cvPath);
+        else flash(attachBtn, "Generate a CV first");
+      };
       document.getElementById("loginsBtn").onclick = () => {
         const willShow = !loginsPanel.classList.contains("show");
         loginsPanel.classList.toggle("show", willShow);
         if (willShow) renderLogins();
       };
 
-      // ---------------- init ----------------
+      // ---- boot ----
       renderPinned();
-      addTab(null, null); // a blank new-tab page to start on
+      applyBridge.onState((s) => { state = s; render(); });
+      applyBridge.ready().then((initial) => {
+        if (initial && initial.tabs) {
+          state = { tabs: initial.tabs, activeId: initial.activeId, savedLogin: state.savedLogin };
+          render();
+        }
+      });
     </script>
   </body>
 </html>

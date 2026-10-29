@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, safeStorage } = require("electron");
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell, safeStorage } = require("electron");
 const { spawn, execFile } = require("child_process");
 const fs = require("fs");
 const os = require("os");
@@ -132,13 +132,218 @@ function waitForBackend(timeoutMs = 20000) {
   });
 }
 
-// In-app browser: an Arc-style window with a tab sidebar, pinned job boards,
-// and secure local logins. One window is reused — each job opens as a new tab
-// instead of a new window.
-let applyWindow = null;
+// ===========================================================================
+// In-app browser (Arc-style).
+//
+// Architecture: the main process owns one WebContentsView per tab. The window's
+// own webContents is only the chrome (sidebar + toolbar). This is how a real
+// multi-tab browser is built in Electron — NOT the deprecated <webview> tag,
+// which is fragile and was causing pages to fail to render.
+// ===========================================================================
 
-function sendApplyTab(win, targetUrl, cvPath) {
-  win.webContents.send("apply-open-tab", { url: targetUrl, cvPath: cvPath || null });
+// Keep these in sync with the CSS in apply-window.html (.sidebar width, .toolbar height).
+const SIDEBAR_WIDTH = 232;
+const TOOLBAR_HEIGHT = 49;
+
+let applyWindow = null; // BrowserWindow hosting the chrome + tab views
+let applyTabs = []; // { id, view, url, title, favicon, cvPath, showingError }
+let applyActiveId = null;
+let applyNextId = 1;
+let pendingFirstUrl = null; // { url, cvPath } held until the chrome reports ready
+
+function tabById(id) {
+  return applyTabs.find((t) => t.id === id) || null;
+}
+function activeTab() {
+  return tabById(applyActiveId);
+}
+function contentBounds() {
+  if (!applyWindow || applyWindow.isDestroyed()) {
+    return { x: SIDEBAR_WIDTH, y: TOOLBAR_HEIGHT, width: 0, height: 0 };
+  }
+  const [w, h] = applyWindow.getContentSize();
+  return {
+    x: SIDEBAR_WIDTH,
+    y: TOOLBAR_HEIGHT,
+    width: Math.max(0, w - SIDEBAR_WIDTH),
+    height: Math.max(0, h - TOOLBAR_HEIGHT),
+  };
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function errorPageDataUrl(url, desc) {
+  const html =
+    "<!doctype html><html><head><meta charset=\"utf-8\"><title>Couldn't open page</title>" +
+    "<style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#edeff3;color:#1b2733;text-align:center;padding:30px}div{max-width:460px}h2{font-size:17px;margin:0 0 8px}p{color:#667284;font-size:13px}</style></head>" +
+    "<body><div><h2>This page could not open inside the app</h2>" +
+    "<p>" + escapeHtml(desc || "Load error") + "</p>" +
+    "<p>Use the &#8635; Reload button to try again, or <b>Open &#8599;</b> in the toolbar to open it in your normal browser.</p>" +
+    "</div></body></html>";
+  return "data:text/html;charset=utf-8," + encodeURIComponent(html);
+}
+
+function sendState() {
+  if (!applyWindow || applyWindow.isDestroyed()) return;
+  const tabs = applyTabs.map((t) => ({
+    id: t.id,
+    url: t.url,
+    title: t.title || t.url || "New Tab",
+    favicon: t.favicon,
+    cvPath: t.cvPath || null,
+    canGoBack: !!(t.view && t.view.webContents.canGoBack()),
+    canGoForward: !!(t.view && t.view.webContents.canGoForward()),
+    isNew: !t.view,
+  }));
+  let savedLogin = null;
+  const t = activeTab();
+  if (t && t.url) {
+    const entry = readLoginEntry(t.url);
+    if (entry) savedLogin = { username: entry.username || "" };
+  }
+  applyWindow.webContents.send("apply:state", { tabs, activeId: applyActiveId, savedLogin });
+}
+
+function layoutTabs() {
+  const b = contentBounds();
+  applyTabs.forEach((t) => {
+    if (!t.view) return;
+    if (t.id === applyActiveId) {
+      t.view.setBounds(b);
+    } else {
+      // Keep the page alive but parked off-screen; only the active tab is shown.
+      t.view.setBounds({ x: -100000, y: -100000, width: 1, height: 1 });
+    }
+  });
+}
+
+function refreshTab() {
+  sendState();
+}
+
+function createTabView(tab, url) {
+  const view = new WebContentsView({
+    webPreferences: {
+      partition: "persist:apply", // shared cookies across tabs, persisted to disk
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  applyWindow.contentView.addChildView(view);
+  tab.view = view;
+  const wc = view.webContents;
+
+  wc.on("did-navigate", (_e, u) => {
+    if (u && u.startsWith("data:")) return; // our own error page — keep the real URL
+    tab.url = u;
+    tab.showingError = false;
+    sendState();
+  });
+  wc.on("did-navigate-in-page", (_e, u, isMainFrame) => {
+    if (isMainFrame) {
+      tab.url = u;
+      sendState();
+    }
+  });
+  wc.on("page-title-updated", (_e, title) => {
+    tab.title = title || tab.url;
+    sendState();
+  });
+  wc.on("page-favicon-updated", (_e, favicons) => {
+    tab.favicon = (favicons && favicons[0]) || null;
+    sendState();
+  });
+  wc.on("did-fail-load", (_e, code, desc, validatedURL, isMainFrame) => {
+    if (code === -3) return; // aborted (redirect) — not a real failure
+    if (!isMainFrame) return;
+    tab.showingError = true;
+    if (validatedURL) tab.url = validatedURL;
+    wc.loadURL(errorPageDataUrl(tab.url, desc)).catch(() => {});
+    sendState();
+  });
+  // Links that ask for a new window (target=_blank, window.open) open as tabs.
+  wc.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) openTab(url, null);
+    return { action: "deny" };
+  });
+  wc.loadURL(url).catch(() => {});
+  layoutTabs();
+}
+
+function openTab(url, cvPath) {
+  const tab = {
+    id: applyNextId++,
+    view: null,
+    url: url || null,
+    title: url || "New Tab",
+    favicon: null,
+    cvPath: cvPath || null,
+    showingError: false,
+  };
+  applyTabs.push(tab);
+  if (url) createTabView(tab, url);
+  applyActiveId = tab.id;
+  layoutTabs();
+  sendState();
+  return tab;
+}
+
+function closeTab(id) {
+  const idx = applyTabs.findIndex((t) => t.id === id);
+  if (idx < 0) return;
+  const tab = applyTabs[idx];
+  if (tab.view) {
+    try {
+      applyWindow.contentView.removeChildView(tab.view);
+      tab.view.webContents.close();
+    } catch {
+      /* already gone */
+    }
+  }
+  applyTabs.splice(idx, 1);
+  if (applyTabs.length === 0) {
+    openTab(null, null); // never leave an empty window — show a new-tab page
+  } else if (applyActiveId === id) {
+    applyActiveId = applyTabs[Math.min(idx, applyTabs.length - 1)].id;
+    layoutTabs();
+    sendState();
+  } else {
+    sendState();
+  }
+}
+
+function activateTab(id) {
+  applyActiveId = id;
+  layoutTabs();
+  sendState();
+}
+
+function normalizeUrl(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(s)) return "https://" + s;
+  return "https://www.google.com/search?q=" + encodeURIComponent(s);
+}
+
+function navigateTab(id, raw) {
+  const tab = tabById(id);
+  if (!tab) return;
+  const u = normalizeUrl(raw);
+  if (!u) return;
+  tab.showingError = false;
+  if (!tab.view) {
+    tab.url = u;
+    createTabView(tab, u);
+  } else {
+    tab.url = u;
+    tab.view.webContents.loadURL(u).catch(() => {});
+  }
+  sendState();
 }
 
 function openApplyWindow(targetUrl, cvPath) {
@@ -149,7 +354,7 @@ function openApplyWindow(targetUrl, cvPath) {
     if (applyWindow.isMinimized()) applyWindow.restore();
     applyWindow.show();
     applyWindow.focus();
-    sendApplyTab(applyWindow, targetUrl, cvPath);
+    openTab(targetUrl, cvPath || null);
     return;
   }
 
@@ -165,40 +370,70 @@ function openApplyWindow(targetUrl, cvPath) {
       preload: path.join(__dirname, "apply-preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      webviewTag: true,
     },
   });
-  // Load the local shell, then hand it the job URL over IPC once it is ready.
-  // (Passing the URL via a file:// query string proved unreliable.)
   win.loadFile(path.join(__dirname, "apply-window.html"));
-
-  win.webContents.on("did-fail-load", (_e, code, desc, failedUrl) => {
-    console.error(`[apply] shell failed to load ${failedUrl}: ${code} ${desc}`);
-    // If our own shell page can't load, don't dead-end — open in the system browser.
-    if (code !== -3) {
-      shell.openExternal(targetUrl);
-      win.close();
-    }
-  });
-  win.webContents.on("did-finish-load", () => {
-    console.log("[apply] shell loaded ok; sending first tab");
-    sendApplyTab(win, targetUrl, cvPath);
-  });
-  // Log where the inner job-pages (webviews) actually navigate.
-  win.webContents.on("did-attach-webview", (_e, wc) => {
-    wc.on("did-navigate", (_ev, u) => console.log(`[apply] job page navigated to ${u}`));
-    wc.on("did-fail-load", (_ev, code, desc, u) => {
-      if (code !== -3) console.error(`[apply] job page failed ${u}: ${code} ${desc}`);
-    });
-  });
   applyWindow = win;
+  pendingFirstUrl = { url: targetUrl, cvPath: cvPath || null };
+
+  win.on("resize", layoutTabs);
   win.on("closed", () => {
-    if (applyWindow === win) applyWindow = null;
+    applyTabs = [];
+    applyActiveId = null;
+    pendingFirstUrl = null;
+    applyWindow = null;
   });
 }
 
 ipcMain.handle("open-apply", (_event, url, cvPath) => {
   openApplyWindow(url, cvPath);
+});
+
+// ---- Chrome (sidebar/toolbar) <-> main intents ----
+ipcMain.handle("apply:ready", () => {
+  if (applyTabs.length === 0) {
+    if (pendingFirstUrl) {
+      const p = pendingFirstUrl;
+      pendingFirstUrl = null;
+      openTab(p.url, p.cvPath);
+    } else {
+      openTab(null, null);
+    }
+  }
+  return {
+    tabs: applyTabs.map((t) => ({ id: t.id, url: t.url, title: t.title, favicon: t.favicon, cvPath: t.cvPath, isNew: !t.view })),
+    activeId: applyActiveId,
+  };
+});
+
+ipcMain.handle("apply:get-state", () => {
+  if (!applyWindow) return null;
+  const tabs = applyTabs.map((t) => ({ id: t.id, url: t.url, title: t.title, favicon: t.favicon, cvPath: t.cvPath, isNew: !t.view }));
+  return { tabs, activeId: applyActiveId };
+});
+
+ipcMain.handle("apply:activate", (_e, id) => { activateTab(id); });
+ipcMain.handle("apply:close-tab", (_e, id) => { closeTab(id); });
+ipcMain.handle("apply:new-tab", () => { openTab(null, null); });
+ipcMain.handle("apply:open-url", (_e, url) => {
+  if (/^https?:\/\//i.test(url)) openTab(url, null);
+});
+ipcMain.handle("apply:navigate", (_e, payload) => {
+  navigateTab(payload && payload.id, payload && payload.raw);
+});
+ipcMain.handle("apply:back", (_e, id) => {
+  const t = tabById(id);
+  if (t && t.view && t.view.webContents.canGoBack()) t.view.webContents.goBack();
+});
+ipcMain.handle("apply:forward", (_e, id) => {
+  const t = tabById(id);
+  if (t && t.view && t.view.webContents.canGoForward()) t.view.webContents.goForward();
+});
+ipcMain.handle("apply:reload", (_e, id) => {
+  const t = tabById(id);
+  if (!t || !t.view) return;
+  if (t.showingError && t.url) t.view.webContents.loadURL(t.url).catch(() => {});
+  else t.view.webContents.reload();
 });
 
 // Reveal a generated CV in the OS file manager so the user can drag it into
@@ -234,6 +469,11 @@ ipcMain.handle("pick-folder", async () => {
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];
+});
+
+// The apply window's toolbar asks to open the current page in the real browser.
+ipcMain.handle("open-external", (_event, url) => {
+  if (/^https?:\/\//i.test(url)) shell.openExternal(url);
 });
 
 // ---------------------------------------------------------------------------
@@ -274,6 +514,22 @@ function normalizeOrigin(url) {
   }
 }
 
+function readLoginEntry(url) {
+  const origin = normalizeOrigin(url);
+  if (!origin) return null;
+  const entry = readLogins()[origin];
+  if (!entry || !safeStorage.isEncryptionAvailable()) return null;
+  try {
+    // HUMAN REVIEW NEEDED: password is decrypted only in memory, on demand.
+    return {
+      username: entry.username || "",
+      password: safeStorage.decryptString(Buffer.from(entry.passwordB64, "base64")),
+    };
+  } catch {
+    return null;
+  }
+}
+
 ipcMain.handle("login-save", (_event, payload) => {
   const origin = normalizeOrigin(payload && payload.origin);
   const username = payload && typeof payload.username === "string" ? payload.username : "";
@@ -293,19 +549,7 @@ ipcMain.handle("login-save", (_event, payload) => {
 });
 
 ipcMain.handle("login-get", (_event, url) => {
-  const origin = normalizeOrigin(url);
-  if (!origin) return null;
-  const entry = readLogins()[origin];
-  if (!entry || !safeStorage.isEncryptionAvailable()) return null;
-  try {
-    // HUMAN REVIEW NEEDED: password is decrypted only at fill time, in memory.
-    return {
-      username: entry.username || "",
-      password: safeStorage.decryptString(Buffer.from(entry.passwordB64, "base64")),
-    };
-  } catch {
-    return null;
-  }
+  return readLoginEntry(url);
 });
 
 ipcMain.handle("login-list", () => {
@@ -324,9 +568,149 @@ ipcMain.handle("login-delete", (_event, url) => {
   return { ok: true };
 });
 
-// The apply window's toolbar asks to open the current page in the real browser.
-ipcMain.handle("open-external", (_event, url) => {
-  if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+// ---------------------------------------------------------------------------
+// Autofill + login fill scripts. These run inside the page (via executeJavaScript
+// on the tab's webContents), fill only empty fields, and never submit a form.
+// ---------------------------------------------------------------------------
+
+function buildProfileData(profile) {
+  const name = (profile.name || "").trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  const loc = (profile.location || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return {
+    fullName: name,
+    firstName: parts[0] || "",
+    lastName: parts.length > 1 ? parts.slice(1).join(" ") : "",
+    email: profile.email || "",
+    phone: profile.phone || "",
+    linkedin: profile.linkedin || "",
+    portfolio: profile.portfolio || "",
+    location: profile.location || "",
+    city: loc[0] || "",
+    country: loc.length > 1 ? loc[loc.length - 1] : "",
+    salary: profile.salary_expectation_usd || "",
+    notice: profile.notice_period || "",
+    workAuth: profile.work_authorization || "",
+  };
+}
+
+function buildFillScript(data) {
+  return "(function(){" +
+    "var d=" + JSON.stringify(data) + ";" +
+    "var pats=[" +
+      "{k:['email'],re:/e-?mail/i,ex:/confirm/i}," +
+      "{k:['phone'],re:/phone|mobile|telephone|^tel$/i}," +
+      "{k:['firstName'],re:/first[ _-]*name|given[ _-]*name|fname/i}," +
+      "{k:['lastName'],re:/last[ _-]*name|surname|family[ _-]*name|lname/i}," +
+      "{k:['fullName'],re:/full[ _-]*name|your[ _-]*name|applicant[ _-]*name|candidate[ _-]*name|^name$|legal[ _-]*name/i,ex:/user|company|file/i}," +
+      "{k:['linkedin'],re:/linked-?in/i}," +
+      "{k:['portfolio'],re:/portfolio|website|personal[ _-]*site|github|^url$/i,ex:/company/i}," +
+      "{k:['city'],re:/^city$|town/i}," +
+      "{k:['country'],re:/country/i}," +
+      "{k:['location'],re:/location|current[ _-]*address|^address$/i,ex:/email|ip|line2/i}," +
+      "{k:['salary'],re:/salary|compensation|expected[ _-]*pay|desired[ _-]*pay/i}," +
+      "{k:['notice'],re:/notice[ _-]*period|availab/i}," +
+      "{k:['workAuth'],re:/authoriz|visa|sponsor|work[ _-]*permit|eligib|right[ _-]*to[ _-]*work/i}" +
+    "];" +
+    "function lbl(el){var t='';try{if(el.id){var l=document.querySelector('label[for=\"'+(window.CSS&&CSS.escape?CSS.escape(el.id):el.id)+'\"]');if(l)t+=' '+l.textContent;}}catch(e){}var p=el.closest&&el.closest('label');if(p)t+=' '+p.textContent;return t;}" +
+    "function sig(el){return [el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('autocomplete'),lbl(el)].filter(Boolean).join(' ').toLowerCase();}" +
+    "function setVal(el,val){try{var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;var s=Object.getOwnPropertyDescriptor(proto,'value').set;s.call(el,val);}catch(e){el.value=val;}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
+    "var skip=['password','hidden','file','checkbox','radio','submit','button','search','range','color','image','reset'];" +
+    "var count=0;" +
+    "function fillDoc(doc){var els=doc.querySelectorAll('input,textarea');Array.prototype.forEach.call(els,function(el){var type=(el.type||'text').toLowerCase();if(skip.indexOf(type)>=0)return;if(el.disabled||el.readOnly)return;if(el.value&&el.value.trim())return;var s=sig(el);if(!s)return;for(var i=0;i<pats.length;i++){var pat=pats[i];if(pat.ex&&pat.ex.test(s))continue;if(pat.re.test(s)){var val='';for(var j=0;j<pat.k.length;j++){if(d[pat.k[j]]){val=d[pat.k[j]];break;}}if(val){setVal(el,val);count++;}break;}}});}" +
+    "fillDoc(document);" +
+    "try{var fr=document.querySelectorAll('iframe');Array.prototype.forEach.call(fr,function(f){try{if(f.contentDocument)fillDoc(f.contentDocument);}catch(e){}});}catch(e){}" +
+    "return count;" +
+  "})();";
+}
+
+function fillLoginScript(username, password) {
+  return "(function(){" +
+    "var u=" + JSON.stringify(username) + ",p=" + JSON.stringify(password) + ";" +
+    "function setVal(el,val){try{var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;var s=Object.getOwnPropertyDescriptor(proto,'value').set;s.call(el,val);}catch(e){el.value=val;}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
+    "var inputs=document.querySelectorAll('input');" +
+    "var pw=null;for(var i=0;i<inputs.length;i++){if((inputs[i].type||'').toLowerCase()==='password'){pw=inputs[i];break;}}" +
+    "if(!pw)return {found:false};" +
+    "var un=null;" +
+    "for(var j=0;j<inputs.length;j++){var e=inputs[j];var t=(e.type||'').toLowerCase();if(t==='email'){un=e;break;}if(t==='text'||t==='tel'){var s=(e.name+' '+e.id+' '+(e.autocomplete||'')).toLowerCase();if(/user|email|login|account|username/i.test(s)){un=e;break;}}}" +
+    "if(un)setVal(un,u);" +
+    "setVal(pw,p);" +
+    "return {found:true};" +
+  "})();";
+}
+
+function readLoginScript() {
+  return "(function(){" +
+    "function get(el){return el.value||'';}" +
+    "var inputs=Array.prototype.slice.call(document.querySelectorAll('input'));" +
+    "var pw=null;for(var i=0;i<inputs.length;i++){if((inputs[i].type||'').toLowerCase()==='password'&&inputs[i].value){pw=inputs[i];break;}}" +
+    "if(!pw)return {found:false};" +
+    "var un=null;" +
+    "for(var j=0;j<inputs.length;j++){var e=inputs[j];var t=(e.type||'').toLowerCase();var s=(e.name+' '+e.id+' '+(e.autocomplete||'')+' '+(e.placeholder||'')).toLowerCase();if(t==='email'){un=e;break;}if(t==='text'&&/user|email|login|account|username/i.test(s)){un=e;break;}}" +
+    "return {found:true,username:un?get(un):'',password:get(pw)};" +
+  "})();";
+}
+
+ipcMain.handle("apply:autofill", async () => {
+  const t = activeTab();
+  if (!t || !t.view) return { ok: false, msg: "No page open" };
+  let profile;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/profile`);
+    if (!res.ok) throw new Error("profile " + res.status);
+    profile = await res.json();
+  } catch (e) {
+    return { ok: false, msg: "No profile found" };
+  }
+  const data = buildProfileData(profile);
+  let count = 0;
+  try {
+    count = await t.view.webContents.executeJavaScript(buildFillScript(data), true);
+  } catch (e) {
+    return { ok: false, msg: "Can't fill here" };
+  }
+  return { ok: true, count };
+});
+
+ipcMain.handle("apply:fill-login", async () => {
+  const t = activeTab();
+  if (!t || !t.view || !t.url) return { ok: false, msg: "No page open" };
+  const entry = readLoginEntry(t.url);
+  if (!entry) return { ok: false, msg: "No saved login" };
+  let res;
+  try {
+    res = await t.view.webContents.executeJavaScript(fillLoginScript(entry.username, entry.password), true);
+  } catch (e) {
+    return { ok: false, msg: "Can't fill here" };
+  }
+  return { ok: true, msg: res && res.found ? "Filled login" : "No login form found" };
+});
+
+ipcMain.handle("apply:save-login", async () => {
+  const t = activeTab();
+  if (!t || !t.view || !t.url) return { ok: false, msg: "No page open" };
+  let creds;
+  try {
+    creds = await t.view.webContents.executeJavaScript(readLoginScript(), true);
+  } catch (e) {
+    return { ok: false, msg: "Can't read page" };
+  }
+  if (!creds || !creds.found || !creds.password) {
+    return { ok: false, msg: "Type your password first" };
+  }
+  const origin = normalizeOrigin(t.url);
+  if (!origin) return { ok: false, msg: "Nothing to save" };
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, msg: "Secure storage is unavailable" };
+  }
+  const data = readLogins();
+  data[origin] = {
+    username: creds.username || "",
+    passwordB64: safeStorage.encryptString(creds.password).toString("base64"),
+  };
+  writeLogins(data);
+  sendState();
+  return { ok: true, msg: "Login saved" };
 });
 
 // ---------------------------------------------------------------------------
