@@ -12,7 +12,7 @@
 - **Company careers-page scanning** — ATS detection unit-tested (Greenhouse,
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
-- Existing suite: `python -m unittest discover -s tests` → 30 tests pass.
+- Existing suite: `python -m unittest discover -s tests` → 34 tests pass.
 - `backend.main` imports cleanly; `npm run build` succeeds; electron files pass
   `node --check`.
 - **Arc-style browser (files)** — `electron/main.js`, `electron/apply-preload.js`
@@ -21,6 +21,11 @@
 - **Browser architecture** — rebuilt on `WebContentsView` (one managed view per
   tab, owned by the main process) instead of the deprecated `<webview>` tag,
   which was causing pages to fail to render.
+- **Password CSV import** — the CSV parser was exercised against Chrome and
+  Firefox export shapes (quoted fields, embedded commas and doubled quotes) and
+  produced the expected rows.
+- **Company-by-name resolver** — `resolve_source` unit-tested (Greenhouse board,
+  generic careers page, not-found, empty name rejected); 4 tests pass.
 
 ## Partial / unproven
 - The desktop app was not launched in this environment — no GUI click-through.
@@ -30,6 +35,9 @@
 - **Arc-style browser UI** — the tab sidebar, pinned boards, and save/fill login
   were not launched in a GUI; they pass syntax/build checks only. Tab switching,
   cookie sharing across tabs, and login save/fill need a real app launch.
+- **Password import + company search UI** — the "Import from file" button and the
+  "Find a company by name" field build cleanly but need a real app launch to
+  confirm end-to-end (file picker → import; name → resolve → add).
 
 ## Needs human review
 - Privacy: generated files and the profile stay local. `cv_folder` is a user-set
@@ -40,3 +48,6 @@
 - **Local logins** — the in-app browser can save website passwords (encrypted
   via the OS keychain) and fill them on the saved site. // HUMAN REVIEW NEEDED:
   password handling
+- **Password import** — imports passwords from a user-chosen CSV (exported from
+  another browser); each is encrypted via the OS keychain before writing to disk
+  and nothing is logged. // HUMAN REVIEW NEEDED: password import
