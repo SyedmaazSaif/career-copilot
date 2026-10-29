@@ -116,7 +116,7 @@
       .error, .start {
         position: absolute; inset: 0; display: none; flex-direction: column;
         align-items: center; justify-content: center; gap: 14px; text-align: center;
-        padding: 30px; background: var(--steel);
+        padding: 30px; background: var(--steel); z-index: 10;
       }
       .error.show { display: flex; }
       .start.show { display: flex; }
@@ -189,19 +189,19 @@
         <!-- persist: partition keeps cookies + logins on disk, so signing in once
              stays signed in on future launches. Each tab is its own webview that
              shares this partition, so they share the same cookies. -->
+
+        <div class="error" id="error">
+          <h2>This page could not open inside the app</h2>
+          <p id="errdetail">The site may block embedding. You can still open it in your normal browser.</p>
+          <button class="open-ext" id="openExt2">Open in system browser</button>
+        </div>
+
+        <div class="start" id="startPage">
+          <h1>New tab</h1>
+          <input id="startUrl" placeholder="Search or enter address" spellcheck="false" />
+          <div class="start-grid" id="startGrid"></div>
+        </div>
       </div>
-    </div>
-
-    <div class="error" id="error">
-      <h2>This page could not open inside the app</h2>
-      <p id="errdetail">The site may block embedding. You can still open it in your normal browser.</p>
-      <button class="open-ext" id="openExt2">Open in system browser</button>
-    </div>
-
-    <div class="start" id="startPage">
-      <h1>New tab</h1>
-      <input id="startUrl" placeholder="Search or enter address" spellcheck="false" />
-      <div class="start-grid" id="startGrid"></div>
     </div>
 
     <div class="logins-panel" id="loginsPanel">
