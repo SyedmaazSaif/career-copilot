@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .. import keywords, scan_manager
 from ..company_site import find_company_site
 from ..custom_scrapers import fetch_single_job
+from ..http_client import robots_allows
 from ..db import get_db
 from ..ingest import dedupe_key, ingest_jobs
 from ..matching import SCORE_VERSION, build_profile, score_job
@@ -71,6 +72,10 @@ def add_by_url(payload: AddJobByUrl, db: Session = Depends(get_db)):
     url = payload.url.strip()
     if not url.startswith(("http://", "https://")):
         raise HTTPException(422, "please paste a full http(s) URL")
+    if not robots_allows(url):
+        raise HTTPException(
+            422, "that site's robots.txt does not allow automated access"
+        )
     job_dict = fetch_single_job(url)
     if job_dict is None:
         raise HTTPException(

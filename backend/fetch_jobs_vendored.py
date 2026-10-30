@@ -284,6 +284,8 @@ def fetch_hiringcafe(q: str, size: int = 40) -> list:
             headers={**HEADERS, "Content-Type": "application/json"},
             timeout=30
         )
+        if r.status_code in (403, 429):
+            raise RuntimeError(f"blocked by Cloudflare (HTTP {r.status_code})")
         if r.status_code != 200:
             print(f"  [hiringcafe] '{q}' returned {r.status_code}", file=sys.stderr)
             return []

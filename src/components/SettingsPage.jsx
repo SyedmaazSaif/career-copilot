@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [newTerm, setNewTerm] = useState("");
   const [newLocation, setNewLocation] = useState("");
   const [newCompany, setNewCompany] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
+  const [newIndustry, setNewIndustry] = useState("");
 
   useEffect(() => {
     api
@@ -142,6 +144,41 @@ export default function SettingsPage() {
     dirty();
   }
 
+  function addExclusionKeyword() {
+    const k = newKeyword.trim().toLowerCase();
+    if (!k) return;
+    setConfig((c) => ({
+      ...c,
+      exclusion_keywords: [...new Set([...(c.exclusion_keywords || []), k])],
+    }));
+    setNewKeyword("");
+    dirty();
+  }
+  function removeExclusionKeyword(k) {
+    setConfig((c) => ({
+      ...c,
+      exclusion_keywords: (c.exclusion_keywords || []).filter((x) => x !== k),
+    }));
+    dirty();
+  }
+  function addExcludedIndustry() {
+    const i = newIndustry.trim().toLowerCase();
+    if (!i) return;
+    setConfig((c) => ({
+      ...c,
+      excluded_industries: [...new Set([...(c.excluded_industries || []), i])],
+    }));
+    setNewIndustry("");
+    dirty();
+  }
+  function removeExcludedIndustry(i) {
+    setConfig((c) => ({
+      ...c,
+      excluded_industries: (c.excluded_industries || []).filter((x) => x !== i),
+    }));
+    dirty();
+  }
+
   async function save() {
     setStatus("saving");
     setError(null);
@@ -154,6 +191,8 @@ export default function SettingsPage() {
         shown_categories: config.shown_categories || [],
         excluded_categories: config.excluded_categories || [],
         company_block_list: config.company_block_list || [],
+        exclusion_keywords: config.exclusion_keywords || [],
+        excluded_industries: config.excluded_industries || [],
         max_age_days: config.max_age_days ?? 30,
       });
       setConfig(saved);
@@ -362,6 +401,60 @@ export default function SettingsPage() {
               >
                 ✕
               </button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Words to never show</h2>
+          <span className="filter-count mono">{(config.exclusion_keywords || []).length} words</span>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          A job whose title or description contains any of these is dropped.
+        </p>
+        <div className="term-add">
+          <input
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addExclusionKeyword()}
+            placeholder="e.g. crypto, gambling"
+          />
+          <button className="btn-secondary" onClick={addExclusionKeyword}>Add word</button>
+        </div>
+        <div className="term-chips">
+          {(config.exclusion_keywords || []).map((k) => (
+            <span key={k} className="term-chip">
+              {k}
+              <button className="term-remove" onClick={() => removeExclusionKeyword(k)} aria-label={`Remove ${k}`}>✕</button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Industries to never show</h2>
+          <span className="filter-count mono">{(config.excluded_industries || []).length} industries</span>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          A job whose text mentions any of these industries is dropped.
+        </p>
+        <div className="term-add">
+          <input
+            value={newIndustry}
+            onChange={(e) => setNewIndustry(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addExcludedIndustry()}
+            placeholder="e.g. healthcare, finance"
+          />
+          <button className="btn-secondary" onClick={addExcludedIndustry}>Add industry</button>
+        </div>
+        <div className="term-chips">
+          {(config.excluded_industries || []).map((i) => (
+            <span key={i} className="term-chip">
+              {i}
+              <button className="term-remove" onClick={() => removeExcludedIndustry(i)} aria-label={`Remove ${i}`}>✕</button>
             </span>
           ))}
         </div>

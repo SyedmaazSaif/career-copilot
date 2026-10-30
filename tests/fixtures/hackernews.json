@@ -1,0 +1,77 @@
+{
+  "author": "whoishiring",
+  "children": [
+    {
+      "author": "mwest1066",
+      "children": [
+        {
+          "author": "cebert",
+          "children": [],
+          "created_at": "2026-10-02T00:13:01.000Z",
+          "created_at_i": 1790899981,
+          "id": 49928484,
+          "options": [],
+          "parent_id": 49922584,
+          "points": null,
+          "story_id": 49922569,
+          "text": "It\u2019s fantastic to have a university professor involved in this project.",
+          "title": null,
+          "type": "comment",
+          "url": null
+        }
+      ],
+      "created_at": "2026-10-01T15:02:37.000Z",
+      "created_at_i": 1790866957,
+      "id": 49922584,
+      "options": [],
+      "parent_id": 49922569,
+      "points": null,
+      "story_id": 49922569,
+      "text": "PrairieLearn (Remote US) \u2014 Full-Stack Software Engineer \u2014 TypeScript &#x2F; Postgres &#x2F; React &#x2F; AI<p>PrairieLearn (<a href=\"https:&#x2F;&#x2F;www.prairielearn.com\" rel=\"nofollow\">https:&#x2F;&#x2F;www.prairielearn.com</a>) is an open-source assessment platform used by universities across the US (Berkeley, Princeton, Michigan, Illinois, and others). We power mastery-based learning and large-scale exams.<p>We\u2019re a small, profitable, early-stage company (bootstrapped, no VC) that is growing quickly. Our users love us and we have very high retention and rapid spread through word of mouth. As an early-stage hire, you\u2019ll work across the stack and enjoy meaningful ownership from day one.<p>Tech we use: Node.js &#x2F; TypeScript backend, Postgres, AWS, React. We\u2019re also developing AI tooling, including LLM agents to help instructors create content, and vision-language models to help grade student work. PrairieLearn is open core: <a href=\"https:&#x2F;&#x2F;github.com&#x2F;PrairieLearn&#x2F;PrairieLearn\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;PrairieLearn&#x2F;PrairieLearn</a><p>Details:<p>- Location: Remote (US only)<p>- Salary: $100k-$180k depending on experience<p>- Benefits: Stock options (0.5% - 1.5%), unlimited PTO, flexible hours<p>- Role: Full-time. (We\u2019re not able to sponsor visas at this time.)<p>Apply at <a href=\"https:&#x2F;&#x2F;www.prairielearn.com&#x2F;jobs-ashby?utm_source=YeEJ5MAKkr&amp;ashby_jid=ee6fdbc3-1c3a-4fa3-bb3f-13ddab449baf\" rel=\"nofollow\">https:&#x2F;&#x2F;www.prairielearn.com&#x2F;jobs-ashby?utm_source=YeEJ5MAKk...</a>",
+      "title": null,
+      "type": "comment",
+      "url": null
+    },
+    {
+      "author": "shepherd-eng",
+      "children": [],
+      "created_at": "2026-10-01T15:02:51.000Z",
+      "created_at_i": 1790866971,
+      "id": 49922593,
+      "options": [],
+      "parent_id": 49922569,
+      "points": null,
+      "story_id": 49922569,
+      "text": "Shepherd (Series B) | ONSITE | San Francisco, CA &amp; New York City, NY<p>At Shepherd, we&#x27;re pursuing the most ambitious technical vision in commercial insurance: fully autonomous underwriting. Shepherd is an AI-native commercial insurance platform transforming how high-hazard industries get covered.<p>The infrastructure behind the AI boom (data centers, semiconductor fabs, renewable energy assets) has to be built and insured, but traditional carriers weren&#x27;t built for this speed. We built Shepherd to solve that.<p>We announced our $42M Series B earlier this year! That brings our total funding to over $60M \u2014 led by Intact Private Capital, the investment arm of one of the largest insurers in the world. Intact is not only our lead investor but also a carrier partner, a testament to the confidence the incumbent industry has in what we&#x27;re building.<p>We\u2019re looking for product-minded, high ownership engineers to join our team! The Engineering team is HQ\u2019d in SF, but we\u2019re growing in NYC now too!<p>We\u2019re hiring for 2 Senior Full Stack Software Engineers, 1 Machine Learning Engineer and 1 AI Product Manager in SF, and 2 Staff Full Stack Software Engineers in NYC. Engineers own projects end-to-end so full stack ability is expected.<p>Check out our open roles here: <a href=\"https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;careers\">https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;careers</a>\nOur stack includes: Typescript, React, Next.js, GraphQL w&#x2F; Apollo, Node.js, Postgres &amp; Redis\n\u2013 If you have experience building AI agents or multi-step reasoning systems, we\u2019d love to hear from you.<p>* In the form, be sure to mention that you heard about this opportunity via Hacker News.\nIf you want to read more about our team and culture, check out our blog: <a href=\"https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;blog\">https:&#x2F;&#x2F;shepherdinsurance.com&#x2F;blog</a>",
+      "title": null,
+      "type": "comment",
+      "url": null
+    },
+    {
+      "author": "mcintyem",
+      "children": [],
+      "created_at": "2026-10-01T15:03:36.000Z",
+      "created_at_i": 1790867016,
+      "id": 49922609,
+      "options": [],
+      "parent_id": 49922569,
+      "points": null,
+      "story_id": 49922569,
+      "text": "Sidekick Labs | Senior SWE, R&amp;D Engineer, Intelligence Engineer | REMOTE (US Timezones) | Full-time | $170k to $230k Base + Equity + Health<p>Sidekick builds AI security software for enterprises. Our sensors observe AI behavior and use in situ. From those observations, our reasoning pipeline produces an application inventory and a risk picture, allowing us to provide real-time intervention and coaching right when it matters.<p><i>Compensation:</i> base salary scaled to experience, meaningful early-stage equity, and 100% covered health insurance for you and your immediate family<p>We are a highly senior team. Most of us have been founders or on early founding teams, so we operate with high ownership. We expect you to have a real, current AI-assisted development practice. Our system spans several languages, and we expect you to use AI tools to quickly navigate unfamiliar parts of the codebase so you can comfortably own problems end-to-end across a broad stack.<p>We are hiring for three roles:<p>- <i>Senior Software Engineer:</i> You will work across our event-driven architecture. You&#x27;ll write Go and Python backend services and touch endpoint-deployed browser and desktop components. You need to be comfortable developing in a multi-tenant, microservice-driven SaaS architecture and understand typical scale and security implications for such products.<p>- <i>R&amp;D Engineer:</i> This is not an open-ended research function. You will take ambiguous feasibility questions tied to our roadmap and return defensible answers inside a week. You&#x27;ll build handoff-ready prototypes, then shift into engineering mode to personally drive them through to production. You will also define operational envelopes and degradation boundaries, and rigorously deprecate infeasible ideas with documented rationale to avoid future re-litigation.<p>- <i>Intelligence and Data Processing Engineer:</i> This role is for someone who loves real browser and desktop forensics. You&#x27;ll use dev tools and debuggers as your primary instruments. Expect to be reading minified code to find where state lives and analyzing network logs to understand undocumented APIs. You will figure out how AI products work and build the prototyping and automation to maintain our software inventory.<p><i>To apply:</i><p>[Edited 10&#x2F;25, to reflect our new hiring process]<p>Send an email to hiring@sidekicklabs.com with the role in the subject. Include a PDF of your resume, a quick sentence or two about a tough technical problem you&#x27;ve solved recently, and links to your GitHub, personal site, and&#x2F;or LinkedIn.<p>I&#x27;m Eric, VP of Technology. You can view my background here: <a href=\"https:&#x2F;&#x2F;www.linkedin.com&#x2F;in&#x2F;three-two-one\" rel=\"nofollow\">https:&#x2F;&#x2F;www.linkedin.com&#x2F;in&#x2F;three-two-one</a><p><a href=\"https:&#x2F;&#x2F;sidekicklabs.com\" rel=\"nofollow\">https:&#x2F;&#x2F;sidekicklabs.com</a>",
+      "title": null,
+      "type": "comment",
+      "url": null
+    }
+  ],
+  "created_at": "2026-10-01T15:02:07.000Z",
+  "created_at_i": 1790866927,
+  "id": 49922569,
+  "options": [],
+  "parent_id": null,
+  "points": 277,
+  "story_id": 49922569,
+  "text": "Please state the location and include REMOTE for remote work, REMOTE (US)\nor similar if the country is restricted, and ONSITE when remote work is <i>not</i> an option.<p>Please only post if you personally are part of the hiring company\u2014no\nrecruiting firms or job boards. One post per company. If it isn&#x27;t a household name,\nexplain what your company does.<p>Please only post if you are actively filling a position and are committed\nto replying to applicants.<p>Commenters: please don&#x27;t reply to job posts to complain about\nsomething. It&#x27;s off topic here.<p>Readers: please only email if you are personally interested in the job.<p>Searchers: try <a href=\"https:&#x2F;&#x2F;hnwork.app\" rel=\"nofollow\">https:&#x2F;&#x2F;hnwork.app</a>, <a href=\"https:&#x2F;&#x2F;nthesis.ai&#x2F;public&#x2F;hn-who-is-hiring\" rel=\"nofollow\">https:&#x2F;&#x2F;nthesis.ai&#x2F;public&#x2F;hn-who-is-hiring</a>, <a href=\"https:&#x2F;&#x2F;dheerajck.github.io&#x2F;hnwhoishiring&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;dheerajck.github.io&#x2F;hnwhoishiring&#x2F;</a>,\n<a href=\"http:&#x2F;&#x2F;nchelluri.github.io&#x2F;hnjobs&#x2F;\" rel=\"nofollow\">http:&#x2F;&#x2F;nchelluri.github.io&#x2F;hnjobs&#x2F;</a>, <a href=\"https:&#x2F;&#x2F;hnjobs.emilburzo.com\" rel=\"nofollow\">https:&#x2F;&#x2F;hnjobs.emilburzo.com</a>.<p>Don&#x27;t miss this other fine thread: <i>Who wants to be hired?</i> <a href=\"https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=49922568\">https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=49922568</a>",
+  "title": "Ask HN: Who is hiring? (October 2026)",
+  "type": "story",
+  "url": null
+}

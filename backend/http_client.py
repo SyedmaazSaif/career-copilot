@@ -108,6 +108,40 @@ def get_json(
     return None
 
 
+def robots_allows(url: str) -> bool:
+    """Best-effort robots.txt check. Returns True if fetching is allowed or no
+    robots.txt exists; False if a matching Disallow rule blocks the path."""
+    try:
+        from urllib.parse import urlparse
+
+        parts = urlparse(url)
+        base = f"{parts.scheme}://{parts.netloc}"
+        txt = get_text(f"{base}/robots.txt", timeout=10, cache_ttl=3600)
+        if not txt:
+            return True
+        disallows: list[str] = []
+        in_block = False
+        for raw in txt.splitlines():
+            line = raw.strip()
+            if line.lower().startswith("user-agent:"):
+                ua = line.split(":", 1)[1].strip()
+                in_block = ua == "*" or ua.lower() == APP_NAME
+                continue
+            if not in_block:
+                continue
+            if line.lower().startswith("disallow:"):
+                path = line.split(":", 1)[1].strip()
+                if path:
+                    disallows.append(path)
+        path = parts.path or "/"
+        for d in disallows:
+            if d == "/" or (d and path.startswith(d)):
+                return False
+        return True
+    except Exception:
+        return True  # could not check — never block the user on a parser bug
+
+
 def get_text(
     url: str,
     params: dict | None = None,

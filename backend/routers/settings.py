@@ -7,9 +7,13 @@ from .. import taxonomy
 from ..db import get_db
 from ..models import CustomSource, Job, SearchConfig
 from ..scrapers import ALL_SOURCES, DEFAULT_QUERIES
+from ..company_registry import add_company as registry_add_company
 from ..company_site import find_company_site
 from ..custom_scrapers import _detect_ats
+from ..models import Company
 from ..schemas import (
+    CompanyIn,
+    CompanyOut,
     CustomSourceIn,
     CustomSourceOut,
     SearchConfigIn,
@@ -166,6 +170,28 @@ def resolve_source(payload: SourceResolveIn):
     if kind:
         return SourceResolveOut(found=True, url=url, kind=kind, value=slug, label=name)
     return SourceResolveOut(found=True, url=url, kind="company", value=url, label=name)
+
+
+@router.get("/companies", response_model=list[CompanyOut])
+def list_companies(db: Session = Depends(get_db)):
+    return db.scalars(select(Company).order_by(Company.name)).all()
+
+
+@router.post("/companies", response_model=CompanyOut, status_code=201)
+def add_company_endpoint(payload: CompanyIn, db: Session = Depends(get_db)):
+    c, _ = registry_add_company(db, payload.name, payload.ats, payload.slug)
+    if c is None:
+        raise HTTPException(422, "a valid ATS kind and board slug are required")
+    return c
+
+
+@router.delete("/companies/{company_id}", status_code=204)
+def delete_company(company_id: int, db: Session = Depends(get_db)):
+    c = db.get(Company, company_id)
+    if c is None:
+        raise HTTPException(404, "company not found")
+    db.delete(c)
+    db.commit()
 
 
 @router.put("/sources/{source_id}", response_model=CustomSourceOut)

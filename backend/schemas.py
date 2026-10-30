@@ -277,6 +277,22 @@ class SourceResolveOut(BaseModel):
     label: str = ""
 
 
+class CompanyIn(BaseModel):
+    name: str = ""
+    ats: str = ""
+    slug: str = ""
+
+
+class CompanyOut(BaseModel):
+    id: int
+    name: str
+    ats: str
+    slug: str
+    enabled: bool = True
+    auto_added: bool = False
+    consecutive_failures: int = 0
+
+
 # ---- Add job by URL ----
 class AddJobByUrl(BaseModel):
     url: str

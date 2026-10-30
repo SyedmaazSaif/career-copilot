@@ -18,6 +18,8 @@ export default function CustomSources() {
   const [companyName, setCompanyName] = useState("");
   const [resolving, setResolving] = useState(false);
   const [resolved, setResolved] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [comp, setComp] = useState({ name: "", ats: "greenhouse", slug: "" });
 
   async function load() {
     try {
@@ -29,6 +31,7 @@ export default function CustomSources() {
   }
   useEffect(() => {
     load();
+    loadCompanies();
   }, []);
 
   async function add() {
@@ -90,6 +93,34 @@ export default function CustomSources() {
       setError(e.message);
     } finally {
       setAdding(false);
+    }
+  }
+  async function loadCompanies() {
+    try {
+      setCompanies(await api.get("/api/settings/companies"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  async function addCompany() {
+    if (!comp.name.trim() || !comp.slug.trim()) return;
+    setAdding(true);
+    try {
+      await api.post("/api/settings/companies", comp);
+      setComp({ name: "", ats: "greenhouse", slug: "" });
+      await loadCompanies();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAdding(false);
+    }
+  }
+  async function removeCompany(id) {
+    try {
+      await api.del(`/api/settings/companies/${id}`);
+      await loadCompanies();
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -160,6 +191,60 @@ export default function CustomSources() {
             Couldn't find a careers page for that name. Try the full company name, or add it manually above.
           </div>
         ))}
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h2>Target companies</h2>
+          <span className="filter-count mono">{companies?.length ?? 0} tracked</span>
+        </div>
+        <p className="empty-hint" style={{ marginTop: 0 }}>
+          Track a company's own job board. The app pulls all of its open jobs every
+          scan and scores them.
+        </p>
+        <div className="source-add">
+          <input
+            placeholder="Company name"
+            value={comp.name}
+            onChange={(e) => setComp({ ...comp, name: e.target.value })}
+          />
+          <select value={comp.ats} onChange={(e) => setComp({ ...comp, ats: e.target.value })}>
+            <option value="greenhouse">Greenhouse</option>
+            <option value="lever">Lever</option>
+            <option value="ashby">Ashby</option>
+            <option value="workable">Workable</option>
+          </select>
+          <input
+            placeholder="Board slug (e.g. stripe)"
+            value={comp.slug}
+            onChange={(e) => setComp({ ...comp, slug: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && addCompany()}
+          />
+          <button
+            className="btn-secondary"
+            onClick={addCompany}
+            disabled={adding || !comp.name.trim() || !comp.slug.trim()}
+          >
+            Add company
+          </button>
+        </div>
+        {companies && companies.length > 0 && (
+          <ul className="record-list" style={{ marginTop: 12 }}>
+            {companies.map((c) => (
+              <li key={c.id} className="record-row">
+                <div className="record-main">
+                  <span className="source-kind mono">{c.ats}</span>
+                  <span className="record-title">{c.name}</span>
+                  <span className="record-meta mono">{c.slug}</span>
+                  {c.auto_added && <span className="record-meta">auto-added</span>}
+                </div>
+                <div className="record-actions">
+                  <button className="link-btn danger" onClick={() => removeCompany(c.id)}>Remove</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {sources && sources.length > 0 && (
         <ul className="record-list" style={{ marginTop: 12 }}>

@@ -12,7 +12,7 @@
 - **Company careers-page scanning** — ATS detection unit-tested (Greenhouse,
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
-- Existing suite: `python -m unittest discover -s tests` → 35 tests pass.
+- Existing suite: `python -m unittest discover -s tests` → 49 tests pass.
 - **Jobicy source** — `fetch_jobicy` fetched 100 real jobs live, and a fixture
   test (`tests/test_jobicy.py`) parses a saved real Jobicy reply.
 - **Scan-coverage diagnosis** — verified live that Hiring.cafe now redirects to
@@ -32,6 +32,11 @@
   produced the expected rows.
 - **Company-by-name resolver** — `resolve_source` unit-tested (Greenhouse board,
   generic careers page, not-found, empty name rejected); 4 tests pass.
+- **Job discovery upgrade** — live-verified connectors for Greenhouse, Lever,
+  Ashby, Workable, Hacker News "Who is hiring" and The Muse. A real scan (2
+  queries, 9 sources) returned 658 unique jobs, ~364 from the new sources
+  (HN 224, Jobicy 100, Muse 40). Location-eligibility, title expansion, skills
+  weighting, dedup and the auto-growing registry are unit-tested.
 
 ## Partial / unproven
 - The desktop app was not launched in this environment — no GUI click-through.
@@ -46,6 +51,16 @@
   confirm end-to-end (file picker → import; name → resolve → add).
 - **Jobicy in a real scan** — verified `fetch_jobicy` alone; a full scan with
   Jobicy enabled (and its jobs ingested + scored) needs a real app run.
+- **Recruitee connector** — implemented but not verified: no live public
+  endpoint found (`{company}.recruitee.com/api/offers` 404s; the app API is
+  auth-gated). Kept disabled-by-default, returns [].
+- **Web-search ATS discovery** — implemented but returns ~0 boards in practice:
+  DuckDuckGo challenges, Bing returns no `site:` results, Mojeek disallows
+  `/search`. Auto-grow is the effective discovery path.
+- **Gmail alerts** — not built; needs a Google Cloud OAuth app + real credentials
+  to test. Flagged for the user's decision.
+- **Settings UI (target companies, exclusion words/industries)** — builds cleanly
+  but needs a real app launch to confirm end-to-end.
 
 ## Needs human review
 - Privacy: generated files and the profile stay local. `cv_folder` is a user-set
@@ -59,3 +74,6 @@
 - **Password import** — imports passwords from a user-chosen CSV (exported from
   another browser); each is encrypted via the OS keychain before writing to disk
   and nothing is logged. // HUMAN REVIEW NEEDED: password import
+- **Gmail alerts (future)** — if built, must be READ-ONLY (never send, delete,
+  label or change read state). Needs Google OAuth credentials the user supplies.
+  // HUMAN REVIEW NEEDED: email access
