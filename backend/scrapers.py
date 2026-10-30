@@ -54,6 +54,7 @@ LOCATION_SOURCES: list[tuple[str, Callable, Callable[[str], bool] | None]] = [
 RSS_SOURCES: list[tuple[str, Callable]] = [
     ("weworkremotely", fj.fetch_weworkremotely),
     ("remoteco", fj.fetch_remoteco),
+    ("jobicy", fj.fetch_jobicy),
 ]
 
 # The global pass every location-aware board runs in addition to the user's

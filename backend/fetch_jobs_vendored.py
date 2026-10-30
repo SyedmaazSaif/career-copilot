@@ -12,7 +12,7 @@ Sources (all free, no auth):
 - We Work Remotely  — RSS feeds per category
 - Wellfound         — public search API (no auth required for basic queries)
 - Remote.co         — RSS feed
-- JobsPresso        — RSS feed
+- Jobicy            — free remote-jobs API (no key)
 
 Queries are intentionally broad. Claude Code does the filtering at scoring time —
 better to cast a wide net here than miss a good role with a non-standard title.
@@ -280,7 +280,7 @@ def fetch_hiringcafe(q: str, size: int = 40) -> list:
             }
         }
         r = requests.post(
-            "https://hiring.cafe/api/search-jobs",
+            "https://hiringcafe.com/api/search-jobs",
             json=payload,
             headers={**HEADERS, "Content-Type": "application/json"},
             timeout=30
@@ -462,6 +462,32 @@ def fetch_remoteco(_q: str = "") -> list:
             print(f"  [remoteco] {feed_url} failed: {e}", file=sys.stderr)
         time.sleep(0.3)
     return results
+
+
+# ─── Source: Jobicy (free API) ────────────────────────────────────────
+def fetch_jobicy(_q: str = "") -> list:
+    """Jobicy's free remote-jobs API (no key). One broad pass per scan; the
+    profile matcher scores each job."""
+    try:
+        r = requests.get(
+            "https://jobicy.com/api/v2/remote-jobs",
+            params={"count": 100},
+            headers=HEADERS, timeout=30,
+        )
+        r.raise_for_status()
+        jobs = r.json().get("jobs", [])
+        return [norm({
+            "source": "jobicy",
+            "title": j.get("jobTitle"),
+            "company": j.get("companyName"),
+            "location": j.get("jobGeo") or "Remote",
+            "url": j.get("url"),
+            "description": j.get("jobDescription") or j.get("jobExcerpt", ""),
+            "posted": j.get("pubDate", ""),
+        }) for j in jobs]
+    except Exception as e:
+        print(f"  [jobicy] failed: {e}", file=sys.stderr)
+        return []
 
 
 # ─── Main ──────────────────────────────────────────────────────────────

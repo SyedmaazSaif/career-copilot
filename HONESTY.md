@@ -12,7 +12,13 @@
 - **Company careers-page scanning** — ATS detection unit-tested (Greenhouse,
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
-- Existing suite: `python -m unittest discover -s tests` → 34 tests pass.
+- Existing suite: `python -m unittest discover -s tests` → 35 tests pass.
+- **Jobicy source** — `fetch_jobicy` fetched 100 real jobs live, and a fixture
+  test (`tests/test_jobicy.py`) parses a saved real Jobicy reply.
+- **Scan-coverage diagnosis** — verified live that Hiring.cafe now redirects to
+  `hiringcafe.com` behind Cloudflare (403 blocks), and that a Bing-RSS "search
+  the web" pass returns dictionary/Wikipedia pages rather than jobs (so it was
+  not shipped).
 - `backend.main` imports cleanly; `npm run build` succeeds; electron files pass
   `node --check`.
 - **Arc-style browser (files)** — `electron/main.js`, `electron/apply-preload.js`
@@ -38,6 +44,8 @@
 - **Password import + company search UI** — the "Import from file" button and the
   "Find a company by name" field build cleanly but need a real app launch to
   confirm end-to-end (file picker → import; name → resolve → add).
+- **Jobicy in a real scan** — verified `fetch_jobicy` alone; a full scan with
+  Jobicy enabled (and its jobs ingested + scored) needs a real app run.
 
 ## Needs human review
 - Privacy: generated files and the profile stay local. `cv_folder` is a user-set
