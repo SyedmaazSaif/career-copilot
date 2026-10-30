@@ -12,11 +12,13 @@ import threading
 from datetime import datetime
 
 from .company_registry import (
+    add_company,
     auto_add_from_jobs,
     drop_after_failures,
     fetch_registry_jobs,
 )
 from .custom_scrapers import run_custom_sources
+from .web_discovery import discover_boards
 from .db import SessionLocal
 from .ingest import ingest_jobs
 from .matching import build_profile, derive_queries
@@ -200,6 +202,13 @@ def _run(run_id: int) -> None:
         # A board that answered but returned nothing is not evidence that its
         # jobs closed -- an endpoint change looks exactly like an empty result.
         productive = {name for name, n in _counts.items() if n > 0}
+
+        # Best-effort ATS board discovery via web search (capped; never fatal).
+        discovered = discover_boards(queries)
+        if discovered:
+            with SessionLocal() as db:
+                for kind, slug in discovered:
+                    add_company(db, slug, kind, slug, auto_added=True)
 
         with SessionLocal() as db:
             new_count, seen_total = ingest_jobs(db, jobs, profile)
