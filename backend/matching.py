@@ -465,15 +465,51 @@ def _arrangement_component(work_type: str, preferred: list[str]) -> tuple[int, s
 
 _MUST_BE_IN = re.compile(r"must (?:be )?(?:based|located|reside|live) in", re.I)
 
+# Region keywords -> canonical region tag. Deliberately no bare "america" for
+# the US, so "Latin America" never reads as "US". "us" matches only as a whole
+# word, so "focus" or "bonus" never count.
+_REGION_PATTERNS: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"\blatin america\b|\blatam\b|\b(?:brazil|mexico|argentina|colombia|chile)\b", re.I), "latam"),
+    (re.compile(r"\b(?:us|u\.s\.|usa|united states)\b", re.I), "us"),
+    (re.compile(r"\b(?:uk|u\.k\.|united kingdom|britain|england|scotland|wales)\b", re.I), "europe"),
+    (re.compile(r"\b(?:europe|eu|emea)\b", re.I), "europe"),
+    (re.compile(r"\b(?:germany|france|netherlands|spain|italy|ireland|poland|sweden|portugal|switzerland|austria|belgium|denmark|finland|norway)\b", re.I), "europe"),
+    (re.compile(r"\b(?:apac|asia|asia-pacific)\b", re.I), "apac"),
+    (re.compile(r"\b(?:australia|new zealand|singapore|india|japan|china|hong kong|malaysia|indonesia|philippines|pakistan|bangladesh|sri lanka)\b", re.I), "apac"),
+    (re.compile(r"\bcanada\b", re.I), "canada"),
+    (re.compile(r"\b(?:middle east|uae|dubai|saudi|qatar|israel)\b", re.I), "emea"),
+    (re.compile(r"\b(?:africa|south africa|nigeria|kenya|egypt)\b", re.I), "africa"),
+]
+
+_REGION_ONLY = re.compile(
+    r"\b(?:us|u\.s\.|usa|uk|u\.k\.|eu|emea|europe|apac|canada|latam|india|australia|united states)\s+only\b",
+    re.I,
+)
+
+
+def detect_regions(text: str) -> set[str]:
+    """Region tags (us, europe, apac, latam, canada, emea, africa) in text."""
+    out: set[str] = set()
+    for pat, tag in _REGION_PATTERNS:
+        if pat.search(text or ""):
+            out.add(tag)
+    return out
+
 
 def _eligibility_component(
-    text: str, location: str, home_locations: list[str]
+    text: str,
+    location: str,
+    home_locations: list[str],
+    home_regions: set[str],
 ) -> tuple[int, str, list[str]]:
     loc = (location or "").lower()
     t = (text or "").lower()
     flags: list[str] = []
+    combined = f"{loc} {t}"
 
     at_home = any(h and (h in loc or h in t) for h in home_locations)
+    if not at_home and home_regions:
+        at_home = bool(home_regions & detect_regions(combined))
 
     authorization_locked = any(
         k in t
@@ -484,24 +520,47 @@ def _eligibility_component(
             "eu citizen", "right to work in the uk", "citizens only",
         )
     )
-    no_sponsor = any(
-        k in t for k in ("no visa sponsorship", "not provide sponsorship",
-                         "without sponsorship", "unable to sponsor")
+    sponsors = any(
+        k in t
+        for k in (
+            "visa sponsorship", "sponsorship available", "will sponsor",
+            "visa available", "we sponsor", "sponsorship offered",
+        )
     )
-    country_locked = bool(_MUST_BE_IN.search(t)) and "anywhere" not in t
+    no_sponsor = any(
+        k in t
+        for k in (
+            "no visa sponsorship", "not provide sponsorship",
+            "without sponsorship", "unable to sponsor", "no sponsorship",
+        )
+    )
+
+    required = detect_regions(combined)
+    constrained = (
+        bool(_MUST_BE_IN.search(t))
+        or bool(_REGION_ONLY.search(t))
+        or " time zone" in t
+        or " time zones" in t
+        or " based in" in t
+        or " located in" in t
+        or "must reside" in t
+        or "must live" in t
+    )
 
     if at_home:
         return W_ELIGIBILITY, "where you are", flags
     if authorization_locked:
         flags.append("Requires citizenship or clearance you may not hold")
         return 0, "authorization required", flags
-    if country_locked:
-        flags.append("Requires being based in a specific place")
-        return round(W_ELIGIBILITY * 0.3), "location-locked", flags
+    if required and constrained:
+        flags.append("Requires being based in a specific region or time zone")
+        return 0, "location-locked", flags
     if no_sponsor:
         flags.append("No visa sponsorship offered")
-        return round(W_ELIGIBILITY * 0.5), "no sponsorship", flags
-    if "worldwide" in t or "anywhere" in loc or "globally" in t:
+        return round(W_ELIGIBILITY * 0.4), "no sponsorship", flags
+    if sponsors:
+        return W_ELIGIBILITY, "visa sponsorship offered", flags
+    if "worldwide" in t or "anywhere" in loc or "globally" in t or "work from anywhere" in t:
         return W_ELIGIBILITY, "open worldwide", flags
     return round(W_ELIGIBILITY * 0.7), "no barrier stated", flags
 
@@ -561,6 +620,9 @@ def build_profile(db: Session) -> dict:
         for part in re.split(r"[,/|]", raw)
         if len(part.strip()) >= 3
     ]
+    home_regions: set[str] = set()
+    for hloc in home_locations:
+        home_regions |= detect_regions(hloc)
 
     return {
         "skills": skills,
@@ -570,6 +632,7 @@ def build_profile(db: Session) -> dict:
         "user_band": user_band,
         "preferred_arrangements": preferred,
         "home_locations": home_locations,
+        "home_regions": home_regions,
         # Cold start: with no résumé there is nothing to match on, and a score
         # presented as if there were would be a lie.
         "has_resume": bool(skills or resume_text.strip()),
@@ -709,7 +772,7 @@ def score_job(job: dict, profile: dict) -> dict:
         work_type, profile["preferred_arrangements"]
     )
     elig_s, elig_label, elig_flags = _eligibility_component(
-        job_text, location, profile["home_locations"]
+        job_text, location, profile["home_locations"], profile.get("home_regions", set())
     )
 
     if profile["has_resume"]:
