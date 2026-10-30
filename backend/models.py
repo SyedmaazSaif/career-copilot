@@ -282,6 +282,25 @@ class CustomSource(Base):
     enabled: Mapped[bool] = mapped_column(default=True)
 
 
+class Company(Base):
+    """A target company's ATS job board (user-added or auto-discovered).
+
+    Each row points at one ATS board so a later scan can pull ALL of that
+    company's open jobs. consecutive_failures drives the auto-drop rule in
+    company_registry.py."""
+
+    __tablename__ = "company"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, default="")
+    ats: Mapped[str] = mapped_column(String, default="")  # greenhouse|lever|ashby|workable|recruitee
+    slug: Mapped[str] = mapped_column(String, default="")
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    auto_added: Mapped[bool] = mapped_column(default=False)
+    enabled: Mapped[bool] = mapped_column(default=True)
+
+
 class CVPack(Base):
     """A generated CV for a specific job. The docx lives on disk; this row links
     it to the job and records the verification flags."""

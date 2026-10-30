@@ -11,6 +11,11 @@ from __future__ import annotations
 import threading
 from datetime import datetime
 
+from .company_registry import (
+    auto_add_from_jobs,
+    drop_after_failures,
+    fetch_registry_jobs,
+)
 from .custom_scrapers import run_custom_sources
 from .db import SessionLocal
 from .ingest import ingest_jobs
@@ -182,6 +187,12 @@ def _run(run_id: int) -> None:
             custom_jobs, _cc = run_custom_sources(custom, on_progress=on_progress)
             jobs.extend(custom_jobs)
 
+        # Target company boards from the registry (user-added + auto-discovered).
+        with SessionLocal() as db:
+            registry_jobs = fetch_registry_jobs(db, on_progress=on_progress)
+        if registry_jobs:
+            jobs.extend(registry_jobs)
+
         # A source counts as working if at least one of its calls came back
         # without raising. Zero results from a working board is a real signal
         # (nothing matched); zero results from a broken one is not.
@@ -193,6 +204,12 @@ def _run(run_id: int) -> None:
         with SessionLocal() as db:
             new_count, seen_total = ingest_jobs(db, jobs, profile)
             closed = sweep_stale(db, healthy, started_at, productive)
+            added_companies = auto_add_from_jobs(db, jobs)
+            dropped_companies = drop_after_failures(db)
+            if added_companies:
+                print(f"[registry] auto-added {added_companies} company board(s)")
+            if dropped_companies:
+                print(f"[registry] dropped {dropped_companies} failing board(s)")
             run = db.get(ScrapeRun, run_id)
             run.total_found = seen_total
             run.total_new = new_count
