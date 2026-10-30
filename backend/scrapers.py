@@ -27,6 +27,7 @@ else:
     from . import fetch_jobs_vendored as fj  # noqa: E402
 
 from .regional_scrapers import fetch_mustakbil, is_pakistan_location  # noqa: E402
+from .aggregators import fetch_hackernews, fetch_muse  # noqa: E402
 
 # Remote-only boards. They carry no on-site listings at all, so a location is
 # meaningless to them: appending a city to the search term ("product manager
@@ -55,6 +56,8 @@ RSS_SOURCES: list[tuple[str, Callable]] = [
     ("weworkremotely", fj.fetch_weworkremotely),
     ("remoteco", fj.fetch_remoteco),
     ("jobicy", fj.fetch_jobicy),
+    ("muse", fetch_muse),
+    ("hackernews", fetch_hackernews),
 ]
 
 # The global pass every location-aware board runs in addition to the user's
