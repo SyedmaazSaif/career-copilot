@@ -210,6 +210,12 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
     blocked_companies = {
         c.strip().lower() for c in (config.company_block_list or []) if c.strip()
     } if config else set()
+    exclusion_keywords = [
+        k.strip().lower() for k in (config.exclusion_keywords or []) if k.strip()
+    ] if config else []
+    excluded_industries = [
+        i.strip().lower() for i in (config.excluded_industries or []) if i.strip()
+    ] if config else []
 
     # Jobs the user removed. Their rows are gone, so without this they would be
     # re-ingested as brand new on the next scan.
@@ -244,6 +250,13 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
         description = clean_description(raw.get("description", "") or "")
         category = taxonomy.classify(title, description)
         if category in excluded:
+            continue
+
+        # User-set exclusion keywords / industries: drop and never store.
+        blob = f"{title} {description} {' '.join(raw.get('tags') or [])}".lower()
+        if any(k in blob for k in exclusion_keywords):
+            continue
+        if any(k in blob for k in excluded_industries):
             continue
 
         match = by_url.get(nurl) or keys.get(key)

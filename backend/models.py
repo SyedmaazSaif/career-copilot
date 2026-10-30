@@ -263,6 +263,11 @@ class SearchConfig(Base):
     # Companies never to show. The blunt instrument every job seeker asks for.
     company_block_list: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Words and industries to hide: a job whose text contains any of these is
+    # dropped at ingest and never stored.
+    exclusion_keywords: Mapped[list] = mapped_column(JSON, default=list)
+    excluded_industries: Mapped[list] = mapped_column(JSON, default=list)
+
     # Postings older than this are flagged as stale. 0 = don't flag on age.
     # 30 days is the point where a posting is more likely to be a ghost than
     # an active search -- see docs/MATCHING.md.

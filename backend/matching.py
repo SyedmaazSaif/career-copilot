@@ -31,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Bullet, Education, Experience, Profile, SearchConfig, Skill
+from .title_expansions import expand_titles
 
 # Bump when the rubric changes; jobs carrying an older version get rescored on
 # the next app start. 4: arrangement and eligibility stopped being flat additive
@@ -537,6 +538,9 @@ def build_profile(db: Session) -> dict:
     # Fall back to what they have done if they have not said what they want.
     if not target_titles:
         target_titles = past_titles
+    # Related-title expansion from the editable data file (title_expansions.json),
+    # so "Product Manager" also matches Product Owner / Technical PM / etc.
+    target_titles = expand_titles(target_titles)
 
     # Their own seniority: the highest band across current and past titles.
     bands = [

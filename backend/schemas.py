@@ -228,6 +228,8 @@ class SearchConfigIn(BaseModel):
     excluded_categories: list[str] = []
     company_block_list: list[str] = []
     max_age_days: int = 30
+    exclusion_keywords: list[str] = []
+    excluded_industries: list[str] = []
 
 
 class SearchConfigOut(BaseModel):
@@ -240,6 +242,8 @@ class SearchConfigOut(BaseModel):
     excluded_categories: list[str] = []
     company_block_list: list[str] = []
     max_age_days: int = 30
+    exclusion_keywords: list[str] = []
+    excluded_industries: list[str] = []
     # Every category with a display name, so the settings screen does not have
     # to keep its own copy of the taxonomy.
     all_categories: list[dict] = []

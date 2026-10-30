@@ -1,0 +1,17 @@
+{
+  "product manager": ["product owner", "technical product manager", "senior product manager", "associate product manager", "group product manager", "principal product manager", "digital product manager"],
+  "product owner": ["product manager", "technical product manager"],
+  "business analyst": ["business systems analyst", "product analyst", "operations analyst", "data analyst"],
+  "software engineer": ["software developer", "backend engineer", "frontend engineer", "full stack engineer", "full stack developer"],
+  "data analyst": ["data scientist", "business analyst", "product analyst", "analytics engineer"],
+  "data scientist": ["machine learning engineer", "data analyst", "analytics engineer"],
+  "project manager": ["program manager", "delivery manager", "product owner"],
+  "program manager": ["project manager", "delivery manager"],
+  "marketing manager": ["growth manager", "demand generation manager", "brand manager"],
+  "account executive": ["account manager", "sales executive", "business development manager"],
+  "customer success manager": ["account manager", "customer experience manager"],
+  "operations manager": ["operations analyst", "business operations manager"],
+  "recruiter": ["talent acquisition partner", "technical recruiter", "sourcer"],
+  "ux designer": ["product designer", "ui designer", "interaction designer"],
+  "product designer": ["ux designer", "ui designer", "interaction designer"]
+}

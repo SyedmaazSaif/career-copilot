@@ -58,6 +58,8 @@ _COLUMN_ADDITIONS = {
         "excluded_categories": "JSON",
         "company_block_list": "JSON",
         "max_age_days": "INTEGER DEFAULT 30",
+        "exclusion_keywords": "JSON",
+        "excluded_industries": "JSON",
     },
     "profile": {
         "cv_folder": "VARCHAR DEFAULT ''",

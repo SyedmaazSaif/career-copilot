@@ -52,6 +52,8 @@ def _config_out(config: SearchConfig) -> SearchConfigOut:
         excluded_categories=config.excluded_categories or [],
         company_block_list=config.company_block_list or [],
         max_age_days=config.max_age_days if config.max_age_days is not None else 30,
+        exclusion_keywords=config.exclusion_keywords or [],
+        excluded_industries=config.excluded_industries or [],
         all_categories=taxonomy.category_list(),
     )
 
@@ -78,6 +80,12 @@ def update_search_config(payload: SearchConfigIn, db: Session = Depends(get_db))
     ]
     config.company_block_list = sorted(
         {c.strip() for c in payload.company_block_list if c.strip()}
+    )
+    config.exclusion_keywords = sorted(
+        {k.strip().lower() for k in payload.exclusion_keywords if k.strip()}
+    )
+    config.excluded_industries = sorted(
+        {i.strip().lower() for i in payload.excluded_industries if i.strip()}
     )
     config.max_age_days = max(0, min(int(payload.max_age_days or 0), 365))
     db.commit()
