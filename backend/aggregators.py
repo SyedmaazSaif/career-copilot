@@ -106,21 +106,24 @@ def fetch_hackernews() -> list[dict]:
         if not text:
             continue
         first_line = text.split("\n")[0].strip() or text[:120]
-        company = ""
+        head = first_line[:160]
+        # Company = text before the first common header separator.
+        parts = re.split(r"\s*(?:—|–|\||-)\s*", head, 1)
+        company = parts[0].strip()
+        if len(company) > 60:
+            company = company[:60].rstrip(" .,")
+        # Location = a short parenthetical near the start, e.g. "Acme (Remote US) — Role".
         location = ""
-        m = re.match(r"^(.*?)\s*\((.*?)\)", first_line)
-        if m:
-            company = m.group(1).strip()
-            location = m.group(2).strip()
-        else:
-            company = re.split(r"\s*[—–-]\s*", first_line, 1)[0].strip()
+        lm = re.match(r"^[^()]{0,60}\(([^()]{1,40})\)", head)
+        if lm:
+            location = lm.group(1).strip()
         url = ""
         murl = re.search(r"https?://[^\s)\],;]+", text)
         if murl:
             url = murl.group(0).rstrip(".,;")
         out.append({
             "source": "hackernews",
-            "title": first_line,
+            "title": head,
             "company": company,
             "location": location or "Remote",
             "url": url,
