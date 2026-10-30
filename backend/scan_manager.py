@@ -219,7 +219,20 @@ def _run(run_id: int) -> None:
                 print(f"[registry] auto-added {added_companies} company board(s)")
             if dropped_companies:
                 print(f"[registry] dropped {dropped_companies} failing board(s)")
-            run = db.get(ScrapeRun, run_id)
+            source_health = {}
+            for name, fetched in (run.source_counts or {}).items():
+                h = health.get(name, {})
+                source_health[name] = {
+                    "fetched": fetched,
+                    "errors": h.get("failed", 0),
+                    "error": h.get("error", ""),
+                }
+            for name, h in health.items():
+                source_health.setdefault(
+                    name,
+                    {"fetched": 0, "errors": h.get("failed", 0), "error": h.get("error", "")},
+                )
+            run.source_health = source_health
             run.total_found = seen_total
             run.total_new = new_count
             run.total_closed = closed

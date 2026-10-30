@@ -127,9 +127,11 @@ def run_scan(
     counts: dict[str, int] = {}
     health: dict[str, dict] = {}
 
-    def record(source_name: str, ok: bool) -> None:
-        entry = health.setdefault(source_name, {"ok": 0, "failed": 0})
+    def record(source_name: str, ok: bool, err: str = "") -> None:
+        entry = health.setdefault(source_name, {"ok": 0, "failed": 0, "error": ""})
         entry["ok" if ok else "failed"] += 1
+        if err:
+            entry["error"] = str(err)[:200]
 
     def take(source_name: str, batch: list[dict]) -> None:
         added = 0
@@ -150,7 +152,7 @@ def run_scan(
             take(name, fn())
             record(name, True)
         except Exception as exc:  # a broken source must not sink the scan
-            record(name, False)
+            record(name, False, str(exc))
             print(f"[scan] {name} failed: {exc}", file=sys.stderr)
             if on_progress:
                 on_progress(name, 0, len(jobs))
@@ -162,7 +164,7 @@ def run_scan(
                 take(name, fn(q))
                 record(name, True)
             except Exception as exc:
-                record(name, False)
+                record(name, False, str(exc))
                 print(f"[scan] {name} '{q}' failed: {exc}", file=sys.stderr)
             time.sleep(0.3)
 
@@ -175,7 +177,7 @@ def run_scan(
                     take(name, fn(q, loc))
                     record(name, True)
                 except Exception as exc:
-                    record(name, False)
+                    record(name, False, str(exc))
                     print(
                         f"[scan] {name} '{q}' @ '{loc}' failed: {exc}",
                         file=sys.stderr,

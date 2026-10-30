@@ -49,6 +49,7 @@ _COLUMN_ADDITIONS = {
     },
     "scrape_run": {
         "total_closed": "INTEGER DEFAULT 0",
+        "source_health": "JSON",
     },
     "search_config": {
         "preferred_arrangements": "JSON",

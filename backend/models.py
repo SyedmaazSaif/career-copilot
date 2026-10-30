@@ -338,4 +338,6 @@ class ScrapeRun(Base):
     # the list being kept clean rather than only growing.
     total_closed: Mapped[int] = mapped_column(Integer, default=0)
     source_counts: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Per-source health: {source: {fetched, errors, error}}.
+    source_health: Mapped[dict] = mapped_column(JSON, default=dict)
     error: Mapped[str] = mapped_column(Text, default="")
