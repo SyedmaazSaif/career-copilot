@@ -26,6 +26,7 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -297,35 +298,42 @@ def _part_hit(skill: str, padded_text: str, text_tokens: set[str]) -> float:
 
 
 def _skills_component(
-    job_text: str, skills: list[str]
+    job_text: str,
+    skills: list[str],
+    skill_weights: dict[str, float] | None = None,
 ) -> tuple[int, list[str], list[str]]:
-    """Returns (score, skills found in the posting, skills not found)."""
+    """Returns (score, skills found in the posting, skills not found).
+
+    Skills are weighted by where they appear in the résumé (a headline skill
+    counts more than one buried in the skills list alone)."""
     if not skills:
         return 0, [], []
+    weights = skill_weights or {}
     padded = f" {job_text} "
     tokens = set(tokenize(job_text))
 
-    weight = 0.0
     matched: list[str] = []
     missing: list[str] = []
-    considered = 0
+    matched_weight = 0.0
+    total_weight = 0.0
     for skill in skills:
         if not skill_forms(skill):
             continue
-        considered += 1
+        w = max(0.5, min(weights.get(skill, 1.0), 2.0))
+        total_weight += w
         hit = _skill_hit(skill, padded, tokens)
         if hit:
-            weight += hit
+            matched_weight += hit * w
             matched.append(skill)
         else:
             missing.append(skill)
 
-    if not considered:
+    if not total_weight:
         return 0, [], []
     # Proportional to how much of the user's skill set the posting asks for. A
     # posting cannot name every skill a person has, so 60% weighted coverage is
     # already a full-marks match rather than requiring an impossible 100%.
-    ratio = weight / considered
+    ratio = matched_weight / total_weight
     score = round(min(ratio / 0.6, 1.0) * W_SKILLS)
     return score, matched, missing
 
@@ -496,6 +504,15 @@ def detect_regions(text: str) -> set[str]:
     return out
 
 
+_YEARS_REQ = re.compile(r"(\d{1,2})\+?\s*(?:years?|yrs?)", re.I)
+
+
+def _max_years_required(text: str) -> int | None:
+    """The largest 'N+ years' requirement mentioned, or None."""
+    found = [int(m.group(1)) for m in _YEARS_REQ.finditer(text or "")]
+    return max(found) if found else None
+
+
 def _eligibility_component(
     text: str,
     location: str,
@@ -624,6 +641,32 @@ def build_profile(db: Session) -> dict:
     for hloc in home_locations:
         home_regions |= detect_regions(hloc)
 
+    # Weight skills by where they appear in the résumé: a skill named in the
+    # title or summary counts more than one buried in the skills list alone.
+    strong_text = " ".join(
+        [profile.title if profile else "", profile.summary if profile else ""]
+    ).lower()
+    medium_text = " ".join(
+        [b.text for b in bullets] + [f"{e.role} {e.context}" for e in experiences]
+    ).lower()
+    skill_weights: dict[str, float] = {}
+    for s in skills:
+        w = 1.0
+        key = s.lower()
+        if key and key in strong_text:
+            w += 0.5
+        if key and key in medium_text:
+            w += 0.25
+        skill_weights[s] = min(w, 1.75)
+
+    # Rough years of experience: now minus the earliest year on the CV.
+    start_years = [
+        int(y)
+        for e in experiences
+        for y in re.findall(r"\b(?:19|20)\d{2}\b", e.dates or "")
+    ]
+    years_experience = datetime.now().year - min(start_years) if start_years else None
+
     return {
         "skills": skills,
         "resume_text": resume_text,
@@ -633,6 +676,8 @@ def build_profile(db: Session) -> dict:
         "preferred_arrangements": preferred,
         "home_locations": home_locations,
         "home_regions": home_regions,
+        "skill_weights": skill_weights,
+        "years_experience": years_experience,
         # Cold start: with no résumé there is nothing to match on, and a score
         # presented as if there were would be a lie.
         "has_resume": bool(skills or resume_text.strip()),
@@ -760,7 +805,9 @@ def score_job(job: dict, profile: dict) -> dict:
     work_type = classify_work_type(title, description, location)
     employment_type = classify_employment_type(job_text)
 
-    skills_s, matched, missing = _skills_component(job_text, profile["skills"])
+    skills_s, matched, missing = _skills_component(
+        job_text, profile["skills"], profile.get("skill_weights")
+    )
     role_s, role_detail = _role_component(
         title, profile["target_titles"], profile["user_band"]
     )
@@ -799,6 +846,13 @@ def score_job(job: dict, profile: dict) -> dict:
     red_flags = list(elig_flags)
     if work_type == "onsite" and "onsite" not in profile["preferred_arrangements"]:
         red_flags.append("On-site role — not in your preferred arrangements")
+    if profile.get("years_experience") is not None:
+        req = _max_years_required(job_text)
+        if req and req > profile["years_experience"] + 1:
+            red_flags.append(
+                f"Asks for {req}+ years of experience (your résumé shows about "
+                f"{profile['years_experience']})"
+            )
 
     reason = {
         "skills": {"score": skills_s, "of": W_SKILLS, "matched": matched[:12],

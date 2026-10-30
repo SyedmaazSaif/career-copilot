@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import taxonomy
+from .ats import is_ats_url
 from .matching import score_job
 from .models import DismissedJob, Job, SearchConfig
 from .salary import parse_salary
@@ -269,6 +270,11 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
                         break
 
         if match is not None:
+            # Keep the best version of a cross-posted job: prefer the direct
+            # company (ATS) link over an aggregator link.
+            if is_ats_url(url) and not is_ats_url(match.url or ""):
+                match.url = url
+                match.source = raw.get("source", "")
             # Seen again. Reset the miss counter, and if a previous scan had
             # retired it, put it back: a posting that reappears was paused or
             # hit a listing window, not closed.

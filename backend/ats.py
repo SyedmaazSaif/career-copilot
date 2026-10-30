@@ -36,6 +36,11 @@ UNVERIFIED_ATS = ("recruitee",)
 ATS_KINDS = tuple(VERIFIED_ATS) + tuple(UNVERIFIED_ATS)
 
 
+def is_ats_url(url: str) -> bool:
+    """True if this URL is a direct company ATS link (vs an aggregator)."""
+    return detect_ats(url)[0] is not None
+
+
 def detect_ats(url: str) -> tuple[str | None, str | None]:
     """Detect an ATS and its board slug from a URL. Returns (kind, slug) or
     (None, None). Only board URLs are detected, not single-job deep links."""
