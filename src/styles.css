@@ -596,6 +596,50 @@ button:focus-visible {
 .update-error {
   color: var(--rose);
 }
+.update-modal {
+  max-width: 600px;
+}
+.update-kept {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.update-note {
+  font-size: 13px;
+  color: var(--slate-muted);
+  margin: 0 0 12px;
+}
+.update-cmd-box {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.update-cmd-box code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.update-copy {
+  flex: none;
+  white-space: nowrap;
+}
+.update-steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.update-steps li {
+  margin-bottom: 4px;
+}
 .btn-secondary:disabled {
   opacity: 0.55;
   cursor: default;

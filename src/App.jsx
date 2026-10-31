@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { checkForUpdate } from "./updateCheck.js";
 import ProfilePage from "./components/ProfilePage.jsx";
+import UpdatePopup from "./components/UpdatePopup.jsx";
 import JobsPage from "./components/JobsPage.jsx";
 import SettingsPage from "./components/SettingsPage.jsx";
 
@@ -17,6 +18,7 @@ export default function App() {
   const [update, setUpdate] = useState(null); // {current, latest, url} | null
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -89,7 +91,16 @@ export default function App() {
       </aside>
 
       <main className="content">
-        {update && (
+        {update && !updateDismissed && (
+          <UpdatePopup
+            update={update}
+            updating={updating}
+            updateError={updateError}
+            onUpdateNow={applyUpdate}
+            onRemindLater={() => setUpdateDismissed(true)}
+          />
+        )}
+        {update && updateDismissed && (
           <div className="update-banner">
             <span>
               <strong>Update available</strong> — career-copilot {update.latest} is
