@@ -35,7 +35,8 @@ allow automated access, with rules-based matching (no AI, no paid keys).
 ## Part 4 — blocked sites + inbox + link drop
 - Hiring.cafe → `hiringcafe.com`, skipped while Cloudflare 403 (logged).
 - "Send to Copilot": existing "Add job by URL" now checks robots.txt first.
-- Gmail alerts: deferred (needs Google OAuth setup — see HONESTY).
+- Gmail alerts ("alerts inbox" source): skipped by user request — no Google
+  sign-in or account access.
 
 ## Part 5 — reliability
 - Per-source health summary (`ScrapeRun.source_health`).

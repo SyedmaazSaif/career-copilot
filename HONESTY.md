@@ -57,8 +57,8 @@
 - **Web-search ATS discovery** — implemented but returns ~0 boards in practice:
   DuckDuckGo challenges, Bing returns no `site:` results, Mojeek disallows
   `/search`. Auto-grow is the effective discovery path.
-- **Gmail alerts** — not built; needs a Google Cloud OAuth app + real credentials
-  to test. Flagged for the user's decision.
+- **Gmail alerts ("alerts inbox" source)** — skipped by the user's request. No
+  Google sign-in or account access is requested; the source is off and not built.
 - **Settings UI (target companies, exclusion words/industries)** — builds cleanly
   but needs a real app launch to confirm end-to-end.
 
@@ -74,6 +74,6 @@
 - **Password import** — imports passwords from a user-chosen CSV (exported from
   another browser); each is encrypted via the OS keychain before writing to disk
   and nothing is logged. // HUMAN REVIEW NEEDED: password import
-- **Gmail alerts (future)** — if built, must be READ-ONLY (never send, delete,
-  label or change read state). Needs Google OAuth credentials the user supplies.
-  // HUMAN REVIEW NEEDED: email access
+- **Gmail alerts (skipped)** — not built. If revisited later, it must be
+  READ-ONLY (never send, delete, label or change read state). // HUMAN REVIEW
+  NEEDED: email access
