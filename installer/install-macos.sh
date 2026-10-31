@@ -1,7 +1,7 @@
 #!/bin/bash
 # career-copilot one-line installer for macOS.
 #
-#   curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash
+#   curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash
 #
 # Downloads the app, installs everything it needs, offers the optional local
 # AI, and starts it. Nothing here needs git, Homebrew or a developer account.

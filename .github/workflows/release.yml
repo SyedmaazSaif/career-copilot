@@ -1,0 +1,69 @@
+name: Release
+
+# On every v* tag: rebuild the installer zips and publish them as a GitHub
+# Release, so downloads are counted as release assets.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rebuild installer zips
+        run: python installer/mac-installer/build_zip.py
+
+      - name: Prepare release notes
+        run: |
+          python - <<'PY'
+          import subprocess
+
+          header = """## How to install or update
+
+Close Career Copilot first. Your data is kept.
+
+**Mac:** open Terminal (Command + Space, type Terminal, Enter), paste this, press Enter:
+
+```
+curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash
+```
+
+**Windows:** open PowerShell (Start, type PowerShell, Enter), right-click to paste this, press Enter:
+
+```
+irm https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-windows.ps1 | iex
+```
+"""
+
+          try:
+              changes = subprocess.check_output(
+                  ["git", "log", "--pretty=format:- %s", "-n", "25"]
+              ).decode("utf-8", "replace").strip()
+          except Exception:
+              changes = "- See the commit history for details."
+
+          with open("release-notes.md", "w", encoding="utf-8") as fh:
+              fh.write(header + "\n## What's new\n" + changes + "\n")
+          PY
+
+      - name: Create release and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            installer/Install-Career-Copilot-Mac.zip \
+            installer/Install-Career-Copilot-Windows.zip \
+            installer/install-macos.sh \
+            installer/install-windows.ps1 \
+            --title "Career Copilot ${{ github.ref_name }}" \
+            --notes-file release-notes.md

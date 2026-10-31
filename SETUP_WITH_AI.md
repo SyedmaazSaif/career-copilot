@@ -26,10 +26,10 @@ It is genuinely one step, and it installs Node and Python for you if you do not
 have them:
 
 - **Windows:** download
-  [Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip),
+  [Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Windows.zip),
   open it, and double-click **Install Career Copilot** inside.
 - **macOS:** download
-  [Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip),
+  [Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Mac.zip),
   open it, then **right-click** **Install Career Copilot** inside and choose
   **Open** → **Open**. (Right-click, not double-click — macOS blocks a
   downloaded program until you confirm once.)

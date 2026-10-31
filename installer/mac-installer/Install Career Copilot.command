@@ -9,7 +9,7 @@
 
 REPO="${CAREER_COPILOT_REPO:-SyedmaazSaif/career-copilot}"
 BRANCH="${CAREER_COPILOT_BRANCH:-main}"
-URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/install-macos.sh"
+URL="https://github.com/${REPO}/releases/latest/download/install-macos.sh"
 
 # This file arrived inside a downloaded zip, so macOS flagged it and everything
 # next to it. Clear that here: without it, the launcher created at the end of

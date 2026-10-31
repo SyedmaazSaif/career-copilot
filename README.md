@@ -26,6 +26,22 @@ create.** Your data never leaves your machine.
 generator, ATS resume, AI job search assistant, remote jobs, applicant tracking
 system, job board aggregator.
 
+## How to install or update
+
+Close Career Copilot first. Your data is kept.
+
+**Mac:** open Terminal (Command + Space, type Terminal, Enter), paste this, press Enter:
+
+```bash
+curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash
+```
+
+**Windows:** open PowerShell (Start, type PowerShell, Enter), right-click to paste this, press Enter:
+
+```powershell
+irm https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-windows.ps1 | iex
+```
+
 > **How does it decide what's relevant?** Everything is matched against the
 > résumé you upload — there are no built-in assumptions about your industry.
 > **[docs/MATCHING.md](docs/MATCHING.md)** explains the scoring, the research
@@ -159,7 +175,7 @@ to install something by hand, and on macOS it never asks for your password.
 
 ### Windows
 
-1. Download **[Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip)**.
+1. Download **[Install-Career-Copilot-Windows.zip](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Windows.zip)**.
 2. Open the zip and double-click **Install Career Copilot** inside it.
 3. If Windows says *"Windows protected your PC"*, click **More info** →
    **Run anyway**. That warning is about the file being downloaded, not
@@ -170,7 +186,7 @@ shortcut on your Desktop. Launch it from there next time.
 
 ### macOS
 
-1. Download **[Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip)**.
+1. Download **[Install-Career-Copilot-Mac.zip](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Mac.zip)**.
 2. Open the zip. **Right-click** the **Install Career Copilot** file inside
    and choose **Open**, then **Open** again.
 3. A Terminal window opens and shows each step.
@@ -184,7 +200,7 @@ You only do the right-click once.
 It installs to `~/career-copilot`. Launch it next time from Launchpad, or by
 double-clicking `Career Copilot.app` in that folder — no warning, the installer
 clears it, and no Terminal window. Prefer the Terminal? One line, no warning at all:
-`curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash`
+`curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash`
 
 ### Running from source instead
 

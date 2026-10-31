@@ -23,10 +23,28 @@ Jump to: **[Windows](#windows)** · **[macOS](#macos)** ·
 
 ---
 
+## How to install or update
+
+Close Career Copilot first. Your data is kept.
+
+**Mac:** open Terminal (Command + Space, type Terminal, Enter), paste this, press Enter:
+
+```bash
+curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash
+```
+
+**Windows:** open PowerShell (Start, type PowerShell, Enter), right-click to paste this, press Enter:
+
+```powershell
+irm https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-windows.ps1 | iex
+```
+
+---
+
 ## Windows
 
 **1. Download the installer:**
-[**Install-Career-Copilot-Windows.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Windows.zip)
+[**Install-Career-Copilot-Windows.zip**](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Windows.zip)
 
 **2. Open the downloaded zip** and double-click **Install Career Copilot**
 inside it.
@@ -52,7 +70,7 @@ app window — no console, no PowerShell.
 ## macOS
 
 **1. Download the installer:**
-[**Install-Career-Copilot-Mac.zip**](https://github.com/SyedmaazSaif/career-copilot/raw/main/installer/Install-Career-Copilot-Mac.zip)
+[**Install-Career-Copilot-Mac.zip**](https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/Install-Career-Copilot-Mac.zip)
 
 **2. Open the downloaded zip** (double-click it, if your browser has not
 already unzipped it). You get a file called **Install Career Copilot**.
@@ -89,7 +107,7 @@ running; it is not tied to that window.
 One line, no download and no security warning at all:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SyedmaazSaif/career-copilot/main/installer/install-macos.sh | bash
+curl -fsSL https://github.com/SyedmaazSaif/career-copilot/releases/latest/download/install-macos.sh | bash
 ```
 
 ### Why does macOS warn about this at all?

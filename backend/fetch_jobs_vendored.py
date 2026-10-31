@@ -54,7 +54,7 @@ QUERIES = [
 
 HEADERS = {
     "User-Agent": (
-        "career-copilot/0.8.3 (+https://github.com/SyedmaazSaif/"
+        "career-copilot/0.8.4 (+https://github.com/SyedmaazSaif/"
         "career-copilot; local job-search assistant)"
     ),
     "Accept": "application/json, text/html, */*",
