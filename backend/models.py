@@ -322,6 +322,19 @@ class CVPack(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+class UploadedCv(Base):
+    """The user's own resume file, kept as-is and separate from the generated
+    CVs. It is never parsed into the profile; it exists so the apply window's
+    Attach CV button can reveal the user's real CV instead of an app-made one."""
+
+    __tablename__ = "uploaded_cv"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    filename: Mapped[str] = mapped_column(String, default="")
+    file_path: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class ScrapeRun(Base):
     """One scan. Logged for the run history and analytics."""
 

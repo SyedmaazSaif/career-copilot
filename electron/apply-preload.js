@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("applyBridge", {
   // CV helpers.
   pickCv: () => ipcRenderer.invoke("pick-cv"),
   reveal: (p) => ipcRenderer.invoke("show-item", p),
+  attachCv: () => ipcRenderer.invoke("apply:attach-cv"),
 
   // Job-form autofill + logins (run in the main process, on the active tab).
   autofill: () => ipcRenderer.invoke("apply:autofill"),

@@ -4,6 +4,7 @@ import PersonalSection from "./PersonalSection.jsx";
 import ExperienceSection from "./ExperienceSection.jsx";
 import FlatSection from "./FlatSection.jsx";
 import ResumeUpload from "./ResumeUpload.jsx";
+import OwnCv from "./OwnCv.jsx";
 
 const SECTIONS = [
   { id: "personal", label: "Personal" },
@@ -61,6 +62,8 @@ export default function ProfilePage() {
       </header>
 
       {importMsg && <div className="banner">{importMsg}</div>}
+
+      <OwnCv />
 
       <div className="section-tabs">
         {SECTIONS.map((s) => (

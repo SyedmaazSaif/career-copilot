@@ -444,6 +444,31 @@ ipcMain.handle("show-item", (_event, p) => {
   if (typeof p === "string" && p.trim()) shell.showItemInFolder(p);
 });
 
+// Attach CV for the active tab: prefer the user's own uploaded CV, then fall
+// back to the generated CV for this job. Reveals the file so it is one drag
+// away from the job site's upload field.
+ipcMain.handle("apply:attach-cv", async () => {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/own-cv`);
+    if (res.ok) {
+      const list = await res.json();
+      const own = Array.isArray(list) && list[0];
+      if (own && own.file_path) {
+        shell.showItemInFolder(own.file_path);
+        return { ok: true, kind: "own", name: own.filename };
+      }
+    }
+  } catch {
+    /* fall through to the generated CV */
+  }
+  const t = activeTab();
+  if (t && t.cvPath) {
+    shell.showItemInFolder(t.cvPath);
+    return { ok: true, kind: "generated" };
+  }
+  return { ok: false, msg: "Upload your own CV first" };
+});
+
 // Native file picker for "upload your own CV". Reveals the chosen file so it
 // is one drag away from the job form. Returns the path (or null if cancelled).
 ipcMain.handle("pick-cv", async () => {

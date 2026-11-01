@@ -175,7 +175,7 @@
         <button class="fill" id="fillLogin" title="Fill the saved login for this site" disabled>No saved login</button>
         <button class="save" id="saveLogin" title="Save this site's login (encrypted on your Mac)">Save login</button>
         <button class="autofill" id="autofill" title="Fill this application form from your profile">⤵ Autofill</button>
-        <button class="autofill" id="attachCv" title="Reveal the CV made for this job, ready to drag in">📎 Attach CV</button>
+        <button class="autofill" id="attachCv" title="Reveal your own uploaded CV to drag in (falls back to the generated CV if none is uploaded)">📎 Attach CV</button>
         <button class="open-ext" id="openExt">Open ↗</button>
       </div>
 
@@ -369,10 +369,10 @@
         if (r && r.ok) flash(autofillBtn, "Filled " + r.count + " field" + (r.count === 1 ? "" : "s"));
         else flash(autofillBtn, (r && r.msg) || "No matching fields");
       };
-      attachBtn.onclick = () => {
-        const a = activeTab();
-        if (a && a.cvPath) applyBridge.reveal(a.cvPath);
-        else flash(attachBtn, "Generate a CV first");
+      attachBtn.onclick = async () => {
+        const r = await applyBridge.attachCv();
+        if (r && r.ok) flash(attachBtn, r.kind === "own" ? "Revealed your CV" : "Revealed generated CV");
+        else flash(attachBtn, (r && r.msg) || "No CV to attach");
       };
       document.getElementById("loginsBtn").onclick = () => {
         const willShow = !loginsPanel.classList.contains("show");

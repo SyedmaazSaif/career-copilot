@@ -314,6 +314,14 @@ class CVPackOut(ORMModel):
     created_at: datetime | None = None
 
 
+# ---- Own CV (user-uploaded resume file) ----
+class UploadedCvOut(ORMModel):
+    id: int
+    filename: str
+    file_path: str
+    created_at: datetime | None = None
+
+
 # ---- Resume import ----
 class ResumeParseResult(BaseModel):
     data: dict

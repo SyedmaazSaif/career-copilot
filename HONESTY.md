@@ -12,7 +12,10 @@
 - **Company careers-page scanning** — ATS detection unit-tested (Greenhouse,
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
-- Existing suite: `python -m unittest discover -s tests` → 49 tests pass.
+- Existing suite: `python -m unittest discover -s tests` → 54 tests pass.
+- **Own CV upload** — new `/api/own-cv` router unit-tested (upload stores the
+  file + row, empty file and wrong extension rejected, newest-first list, delete
+  removes the file). 5 tests pass; `backend.main` imports with the new route.
 - **Jobicy source** — `fetch_jobicy` fetched 100 real jobs live, and a fixture
   test (`tests/test_jobicy.py`) parses a saved real Jobicy reply.
 - **Scan-coverage diagnosis** — verified live that Hiring.cafe now redirects to
@@ -49,6 +52,10 @@
 - **Password import + company search UI** — the "Import from file" button and the
   "Find a company by name" field build cleanly but need a real app launch to
   confirm end-to-end (file picker → import; name → resolve → add).
+- **Own CV upload UI + apply-window attach** — the "Your own resume" box on the
+  Profile page and the updated `Attach CV` button (now prefers the user's own CV)
+  build cleanly and pass syntax checks, but need a real app launch to confirm the
+  upload → attach flow end-to-end.
 - **Jobicy in a real scan** — verified `fetch_jobicy` alone; a full scan with
   Jobicy enabled (and its jobs ingested + scored) needs a real app run.
 - **Recruitee connector** — implemented but not verified: no live public
