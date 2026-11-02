@@ -76,6 +76,9 @@ function startBackend() {
   const python = backendPython();
   // Run uvicorn from the career-copilot root so the `backend` package imports.
   const cwd = path.join(__dirname, "..");
+  // The AI API key is decrypted in memory only, and handed to the backend as an
+  // environment variable. It is never written to a file or logged.
+  const aiKey = readAiKey() || "";
   backendProcess = spawn(
     python,
     [
@@ -89,7 +92,7 @@ function startBackend() {
     ],
     // windowsHide stops Windows from popping a separate console window for the
     // Python sidecar when the app is launched from the hidden VBS wrapper.
-    { cwd, stdio: "inherit", windowsHide: true }
+    { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, AI_API_KEY: aiKey } }
   );
 
   backendProcess.on("error", (err) => {
@@ -108,6 +111,72 @@ function stopBackend() {
     backendProcess = null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// AI API key. Stored with Electron safeStorage (macOS Keychain / Windows DPAPI),
+// exactly like website passwords. The plaintext only ever lives in memory and is
+// passed to the backend as an environment variable — never written to a file.
+// ---------------------------------------------------------------------------
+function aiKeyFile() {
+  return path.join(app.getPath("userData"), "ai-key.json");
+}
+
+function readAiKey() {
+  if (!safeStorage.isEncryptionAvailable()) return null;
+  try {
+    const data = JSON.parse(fs.readFileSync(aiKeyFile(), "utf8"));
+    if (!data || !data.keyB64) return null;
+    // HUMAN REVIEW NEEDED: key is decrypted only in memory, on demand.
+    return safeStorage.decryptString(Buffer.from(data.keyB64, "base64"));
+  } catch {
+    return null;
+  }
+}
+
+function writeAiKey(key) {
+  if (!safeStorage.isEncryptionAvailable()) return false;
+  // HUMAN REVIEW NEEDED: key encrypted before it is persisted.
+  fs.writeFileSync(
+    aiKeyFile(),
+    JSON.stringify({ keyB64: safeStorage.encryptString(key).toString("base64") }),
+    { mode: 0o600 }
+  );
+  return true;
+}
+
+function clearAiKey() {
+  try {
+    fs.rmSync(aiKeyFile(), { force: true });
+  } catch {
+    /* already gone */
+  }
+}
+
+ipcMain.handle("ai-key-get", () => {
+  return { hasKey: !!readAiKey() };
+});
+
+ipcMain.handle("ai-key-set", async (_event, key) => {
+  if (!safeStorage.isEncryptionAvailable()) {
+    return { ok: false, error: "Secure storage is unavailable on this device" };
+  }
+  const value = typeof key === "string" ? key.trim() : "";
+  if (value) {
+    if (!writeAiKey(value)) return { ok: false, error: "Could not save the key" };
+  } else {
+    clearAiKey();
+  }
+  // Restart the backend so the new key is in its environment, then wait for it
+  // to come back so the renderer can immediately re-read the config.
+  stopBackend();
+  startBackend();
+  try {
+    await waitForBackend();
+  } catch (err) {
+    console.error("[ai-key] backend did not restart:", err.message);
+  }
+  return { ok: true };
+});
 
 // Poll /health until the sidecar answers, then resolve.
 function waitForBackend(timeoutMs = 20000) {

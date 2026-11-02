@@ -1,15 +1,17 @@
-"""AI-assisted features that use the optional local Ollama model.
+"""AI-assisted features: resume parsing, CV generation, provider config.
 
-Resume parsing and CV generation live here in later steps. Everything degrades
-to deterministic logic when Ollama is not available, so the app never requires
-a paid API.
+The provider is chosen in Settings (Ollama, free and local, or an
+OpenAI-compatible API like DeepSeek with the user's own key). Every consumer
+falls back to deterministic logic when no AI is available, so the app never
+hard-requires a paid API.
 """
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from .. import hardware, ollama_client, ollama_setup, resume as resume_mod
+from .. import deepseek_client, envfile, hardware, llm, ollama_setup, resume as resume_mod
 from ..db import get_db
 from ..schemas import (
+    AiConfigIn,
     ImportResult,
     OllamaSetupRequest,
     ResumeApplyRequest,
@@ -24,8 +26,45 @@ MAX_RESUME_BYTES = 8 * 1024 * 1024  # 8 MB
 
 @router.get("/status")
 def ai_status():
-    """Whether the optional local AI (Ollama) is on and reachable."""
-    return ollama_client.status()
+    """The active AI provider and whether it is ready."""
+    return llm.status()
+
+
+@router.get("/config")
+def ai_config():
+    """The provider settings the user can edit (never the API key itself)."""
+    return {
+        "provider": llm.provider(),
+        "model": deepseek_client.model() if llm.provider() != "ollama" else "",
+        "base_url": deepseek_client.base_url() if llm.provider() != "ollama" else "",
+        "has_key": bool(deepseek_client.api_key()),
+    }
+
+
+@router.put("/config")
+def save_ai_config(payload: AiConfigIn):
+    """Save the provider choice (non-secret). The API key is handled by
+    Electron's safeStorage, never sent here or written to disk."""
+    provider = (payload.provider or "ollama").strip().lower()
+    if provider not in ("ollama", "deepseek", "custom"):
+        raise HTTPException(422, "provider must be ollama, deepseek or custom")
+
+    values = {"AI_PROVIDER": provider}
+    if provider != "ollama":
+        model = (payload.model or "").strip()
+        base = (payload.base_url or "").strip()
+        if provider == "deepseek":
+            model = model or "deepseek-chat"
+            base = base or "https://api.deepseek.com"
+        if not model:
+            raise HTTPException(422, "a model name is required")
+        if not base.startswith("http"):
+            raise HTTPException(422, "the base URL must start with http")
+        values["AI_MODEL"] = model
+        values["AI_BASE_URL"] = base.rstrip("/")
+
+    envfile.set_values(values)
+    return ai_config()
 
 
 @router.get("/hardware")

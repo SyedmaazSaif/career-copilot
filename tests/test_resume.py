@@ -85,7 +85,7 @@ class ProfileExtractionTests(unittest.TestCase):
 
 class ParseResumeFallbackTests(unittest.TestCase):
     def test_heuristic_data_survives_ai_being_off(self):
-        with mock.patch.object(r.ollama_client, "preflight", return_value="local AI is switched off"):
+        with mock.patch.object(r.llm, "preflight", return_value="local AI is switched off"):
             data, used_ai, err = r.parse_resume(SIMPLE)
         self.assertFalse(used_ai)
         self.assertEqual(err, "local AI is switched off")

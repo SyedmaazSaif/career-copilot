@@ -12,7 +12,11 @@
 - **Company careers-page scanning** — ATS detection unit-tested (Greenhouse,
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
-- Existing suite: `python -m unittest discover -s tests` → 54 tests pass.
+- Existing suite: `python -m unittest discover -s tests` → 64 tests pass.
+- **AI provider choice** — new DeepSeek / OpenAI-compatible client + `llm` dispatch
+  unit-tested (success, provider error, JSON parsing, fence stripping, provider
+  routing); 10 tests pass. `backend.main` imports cleanly with the new
+  `/api/ai/config` endpoints.
 - **Claymorphism reskin** — the whole UI (main app + apply window) moved from the
   dark neon theme to a light pastel clay theme: lavender ground, white clay
   surfaces, soft violet accent, Fredoka + Nunito typography, inner+outer clay
@@ -47,6 +51,10 @@
   weighting, dedup and the auto-growing registry are unit-tested.
 
 ## Partial / unproven
+- **AI provider (end-to-end)** — the DeepSeek client is unit-tested with mocked
+  HTTP, but a real DeepSeek/Custom API call, and the Settings key-save flow
+  (safeStorage → backend restart → config re-read), need a real app launch with
+  a real key to confirm. No live paid call has been made.
 - The desktop app was not launched in this environment — no GUI click-through.
   All UI, apply-window buttons, and the `cv_folder` migration against the live
   database (runs on next app start) need a real launch to confirm.
@@ -89,6 +97,10 @@
 - **Password import** — imports passwords from a user-chosen CSV (exported from
   another browser); each is encrypted via the OS keychain before writing to disk
   and nothing is logged. // HUMAN REVIEW NEEDED: password import
+- **AI API key** — the DeepSeek / custom-model key is stored with Electron
+  `safeStorage` (OS keychain/DPAPI), passed to the backend only as an in-memory
+  environment variable, and never written to a file or logged. The Settings UI
+  never shows the saved key back. // HUMAN REVIEW NEEDED: API key handling
 - **Gmail alerts (skipped)** — not built. If revisited later, it must be
   READ-ONLY (never send, delete, label or change read state). // HUMAN REVIEW
   NEEDED: email access

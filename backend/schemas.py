@@ -336,6 +336,13 @@ class OllamaSetupRequest(BaseModel):
     model: str | None = None
 
 
+class AiConfigIn(BaseModel):
+    """The non-secret AI provider settings. The API key is never sent here."""
+    provider: str = "ollama"  # ollama | deepseek | custom
+    model: str = ""
+    base_url: str = ""
+
+
 class ResumeApplyRequest(BaseModel):
     data: dict
     replace: bool = True

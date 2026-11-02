@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 import requests
 
 APP_NAME = "career-copilot"
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.9.1"
 APP_URL = "https://github.com/SyedmaazSaif/career-copilot"
 
 USER_AGENT = f"{APP_NAME}/{APP_VERSION} (+{APP_URL}; local job-search assistant)"

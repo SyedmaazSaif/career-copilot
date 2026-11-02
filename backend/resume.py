@@ -17,7 +17,7 @@ from __future__ import annotations
 import io
 import re
 
-from . import ollama_client
+from . import llm
 
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 PHONE_RE = re.compile(r"(\+?\d[\d\s().-]{7,}\d)")
@@ -150,7 +150,7 @@ def parse_resume(text: str) -> tuple[dict, bool, str | None]:
 
     data = _parse_heuristic(text)
 
-    err = ollama_client.preflight()
+    err = llm.preflight()
     if err:
         return data, False, err
 
@@ -214,7 +214,7 @@ def _ai_profile(sections: dict[str, str], text: str) -> tuple[dict | None, str |
     """Header plus summary only -- a small prompt and a small answer."""
     parts = [p for p in (sections.get("header"), sections.get("summary")) if p]
     snippet = "\n\n".join(parts) or text[:2000]
-    data, err = ollama_client.generate_json(
+    data, err = llm.generate_json(
         "Resume section:\n\n" + snippet[:4000] + "\n\n"
         "Return JSON with keys: name, title, location, summary. The title is "
         "the person's current job title. The summary is at most 3 sentences "
@@ -231,7 +231,7 @@ def _ai_experiences(sections: dict[str, str], text: str) -> tuple[list | None, s
     """The expensive call -- scoped to the experience section so the model does
     not re-read the whole resume."""
     snippet = _section(sections, "experience", fallback=text)
-    data, err = ollama_client.generate_json(
+    data, err = llm.generate_json(
         "Work experience section:\n\n" + snippet[:8000] + "\n\n"
         "Return a JSON object with one key, experiences, holding a list of "
         "objects with the keys company, role, location, dates, and bullets. "
@@ -277,7 +277,7 @@ def _ai_extras(sections: dict[str, str], text: str) -> tuple[dict | None, str | 
         sections.get("skills"), sections.get("languages"),
     ]
     snippet = "\n\n".join(p for p in parts if p) or text[-4000:]
-    data, err = ollama_client.generate_json(
+    data, err = llm.generate_json(
         "Resume sections:\n\n" + snippet[:6000] + "\n\n"
         "Return a JSON object with these keys: education (list of objects with "
         "degree, school, location, dates), certifications (list of objects with "

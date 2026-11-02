@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld("copilot", {
   pickCv: () => ipcRenderer.invoke("pick-cv"),
   // Native folder picker for choosing where to save generated CVs.
   pickFolder: () => ipcRenderer.invoke("pick-folder"),
+  // AI model API key (stored encrypted via safeStorage, never returned in full).
+  getAiKey: () => ipcRenderer.invoke("ai-key-get"),
+  setAiKey: (key) => ipcRenderer.invoke("ai-key-set", key),
   // Open a URL in the user's real browser (e.g. the releases page).
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   // One-click update: downloads the new version and refreshes the app.

@@ -14,7 +14,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ollama_client
+from . import llm
 from .models import Certification, Education, Experience, Language, Profile, Skill
 
 CV_DIR = Path(__file__).resolve().parent / "data" / "cv"
@@ -80,7 +80,7 @@ def _reword(text: str, job, use_ai: bool) -> str:
         "Return only the rewritten bullet."
     )
     prompt = f"Job title: {job.title}\n\nBullet: {text}\n\nRewritten bullet:"
-    out, _err = ollama_client.generate(
+    out, _err = llm.generate(
         prompt, system=system, temperature=0.3, timeout=90
     )
     if not out:
@@ -368,7 +368,7 @@ def build_pdf(cv_data: dict, path: Path) -> None:
 
 def generate_cv(db: Session, job, answers: dict) -> dict:
     """Full pipeline: gather -> select+reword -> PDF + docx -> verify."""
-    use_ai = ollama_client.preflight() is None
+    use_ai = llm.preflight() is None
     data = gather_profile(db)
     cv_data = build_cv_data(data, job, answers, use_ai)
     flags = verify_cv(cv_data, data)

@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 
 HEADERS = {
     "User-Agent": (
-        "career-copilot/0.9.0 (+https://github.com/SyedmaazSaif/"
+        "career-copilot/0.9.1 (+https://github.com/SyedmaazSaif/"
         "career-copilot; local job-search assistant)"
     ),
     "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",

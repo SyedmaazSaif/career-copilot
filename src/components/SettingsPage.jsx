@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import CustomSources from "./CustomSources.jsx";
 import DismissedJobs from "./DismissedJobs.jsx";
 import AiStatus from "./AiStatus.jsx";
+import AiProvider from "./AiProvider.jsx";
 
 const SOURCE_LABELS = {
   weworkremotely: "We Work Remotely",
@@ -226,6 +227,8 @@ export default function SettingsPage() {
       {status === "error" && <div className="banner error">{error}</div>}
 
       <AiStatus />
+
+      <AiProvider />
 
       <div className="panel">
         <div className="panel-head">
