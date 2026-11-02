@@ -6,15 +6,15 @@ const preStyle = {
   fontFamily: "inherit",
   fontSize: "13px",
   lineHeight: 1.5,
-  background: "#f4f6f9",
-  border: "1px solid rgba(102,114,132,0.3)",
+  background: "#f3effb",
+  border: "1px solid rgba(95,90,122,0.25)",
   borderRadius: 8,
   padding: 12,
   margin: 0,
 };
 
 const qStyle = { fontWeight: 600, fontSize: 13, marginBottom: 2 };
-const aStyle = { color: "#3d4856", fontSize: 13, marginBottom: 10 };
+const aStyle = { color: "#2a2350", fontSize: 13, marginBottom: 10 };
 
 export default function CoverLetterSection({ job }) {
   const [letter, setLetter] = useState(null);

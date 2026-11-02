@@ -3,18 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <title>Apply</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
-        --ink: #1b2733;
-        --steel: #edeff3;
-        --sidebar-bg: #f4f5f8;
-        --petrol: #0e7c7b;
-        --slate-muted: #667284;
-        --rose: #c4566a;
-        --line: rgba(102, 114, 132, 0.22);
+        --ink: #2a2350;
+        --steel: #f4f1fb;
+        --sidebar-bg: #ffffff;
+        --petrol: #6d4fd6;
+        --slate-muted: #5f5a7a;
+        --rose: #b8334a;
+        --line: rgba(95, 90, 122, 0.22);
       }
       * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; font-family: Inter, system-ui, -apple-system, sans-serif; }
+      html, body { margin: 0; height: 100%; font-family: "Nunito", system-ui, -apple-system, sans-serif; }
       body { display: flex; background: var(--steel); color: var(--ink); overflow: hidden; }
 
       /* ---------------- sidebar (232px — keep in sync with main.js) ---------------- */
@@ -38,7 +44,7 @@
         position: relative; user-select: none;
       }
       .tab:hover { background: rgba(0,0,0,0.05); }
-      .tab.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.10); }
+      .tab.active { background: #fff; box-shadow: inset 1px 1px 2px rgba(255,255,255,0.9), inset -1.5px -1.5px 3px rgba(190,178,224,0.4), 0 3px 8px rgba(150,138,196,0.16); }
       .tab .fav {
         width: 18px; height: 18px; flex: none; border-radius: 4px; overflow: hidden;
         display: inline-flex; align-items: center; justify-content: center; font-size: 10px;
@@ -74,7 +80,7 @@
         width: 32px; height: 32px; border-radius: 7px; cursor: pointer; font-size: 15px;
         line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex: none;
       }
-      .tbtn:hover { background: #f4f6f9; }
+      .tbtn:hover { background: #f3effb; }
       .tbtn:disabled { opacity: 0.4; cursor: default; }
       .addr {
         flex: 1; min-width: 0; font-family: "JetBrains Mono", ui-monospace, monospace;
@@ -87,17 +93,17 @@
         border-radius: 7px; padding: 0 12px; height: 32px; cursor: pointer;
         font-size: 12.5px; font-weight: 600; white-space: nowrap; flex: none;
       }
-      .fill { border: 1px solid #2563eb; background: rgba(37,99,235,0.10); color: #1d4ed8; }
-      .fill:hover:not(:disabled) { background: rgba(37,99,235,0.18); }
+      .fill { border: 1px solid #6d4fd6; background: rgba(109,79,214,0.10); color: #5f43c9; }
+      .fill:hover:not(:disabled) { background: rgba(109,79,214,0.18); }
       .fill:disabled { opacity: 0.45; cursor: default; }
       .save { border: 1px solid var(--line); background: #fff; color: var(--ink); }
-      .save:hover { background: #f4f6f9; }
+      .save:hover { background: #f3effb; }
       .autofill {
-        border: 1px solid var(--petrol); background: rgba(14,124,123,0.10); color: #0b6b6a;
+        border: 1px solid var(--petrol); background: rgba(109,79,214,0.10); color: #5f43c9;
         border-radius: 7px; padding: 0 12px; height: 32px; cursor: pointer;
         font-size: 12.5px; font-weight: 600; white-space: nowrap; flex: none;
       }
-      .autofill:hover { background: rgba(14,124,123,0.18); }
+      .autofill:hover { background: rgba(109,79,214,0.18); }
       .open-ext {
         border: 1px solid var(--petrol); background: var(--petrol); color: #fff;
         border-radius: 7px; padding: 0 12px; height: 32px; cursor: pointer;
@@ -113,7 +119,7 @@
         padding: 30px; background: var(--steel);
       }
       .start.show { display: flex; }
-      .start h1 { margin: 0; font-size: 17px; color: var(--ink); }
+      .start h1 { margin: 0; font-size: 17px; color: var(--ink); font-family: "Fredoka", "Nunito", sans-serif; font-weight: 600; }
       .start input {
         width: min(420px, 80%); font-size: 14px; padding: 10px 14px;
         border: 1px solid var(--line); border-radius: 10px; outline: none; background: #fff;
@@ -134,7 +140,7 @@
       .logins-panel {
         position: fixed; top: 48px; right: 12px; width: 320px; max-height: 70vh; overflow-y: auto;
         background: #fff; border: 1px solid var(--line); border-radius: 12px;
-        box-shadow: 0 8px 28px rgba(0,0,0,0.16); padding: 12px; display: none; z-index: 30;
+        box-shadow: 0 8px 28px rgba(42, 35, 80, 0.16); padding: 12px; display: none; z-index: 30;
       }
       .logins-panel.show { display: block; }
       .logins-panel h3 { margin: 2px 0 10px; font-size: 14px; }
@@ -149,7 +155,7 @@
         border: 1px solid var(--line); background: #fff; color: var(--rose); border-radius: 6px;
         padding: 5px 9px; cursor: pointer; font-size: 12px; flex: none;
       }
-      .login-del:hover { background: #fdf3f5; }
+      .login-del:hover { background: #fbeaec; }
       .logins-panel .empty { color: var(--slate-muted); font-size: 13px; padding: 8px 2px; }
       .import-status { font-size: 12px; padding: 0 2px 8px; display: none; }
       .import-status.ok { display: block; color: var(--petrol); }

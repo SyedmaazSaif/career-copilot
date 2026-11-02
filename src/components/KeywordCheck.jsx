@@ -2,8 +2,8 @@ import { useState } from "react";
 import { api } from "../api.js";
 
 const chipStyle = {
-  background: "#f4f6f9",
-  border: "1px solid rgba(102,114,132,0.3)",
+  background: "#f3effb",
+  border: "1px solid rgba(95,90,122,0.25)",
   borderRadius: 6,
   padding: "2px 8px",
   fontSize: 12,
@@ -66,7 +66,7 @@ export default function KeywordCheck({ jobId }) {
           {data.tips.length > 0 && (
             <ul style={{ marginTop: 10, paddingLeft: 18 }}>
               {data.tips.map((t, i) => (
-                <li key={i} style={{ fontSize: 13, color: "#3d4856" }}>{t}</li>
+                <li key={i} style={{ fontSize: 13, color: "#2a2350" }}>{t}</li>
               ))}
             </ul>
           )}

@@ -13,6 +13,11 @@
   Lever, Ashby, embed URL, no-ATS); live Greenhouse "stripe" fetch returned 714
   jobs.
 - Existing suite: `python -m unittest discover -s tests` → 54 tests pass.
+- **Claymorphism reskin** — the whole UI (main app + apply window) moved from the
+  dark neon theme to a light pastel clay theme: lavender ground, white clay
+  surfaces, soft violet accent, Fredoka + Nunito typography, inner+outer clay
+  shadows. `npm run build` succeeds; electron files pass `node --check`; all text
+  accent colours verified ≥ 4.5:1 contrast on their backgrounds.
 - **Own CV upload** — new `/api/own-cv` router unit-tested (upload stores the
   file + row, empty file and wrong extension rejected, newest-first list, delete
   removes the file). 5 tests pass; `backend.main` imports with the new route.
@@ -45,6 +50,9 @@
 - The desktop app was not launched in this environment — no GUI click-through.
   All UI, apply-window buttons, and the `cv_folder` migration against the live
   database (runs on next app start) need a real launch to confirm.
+- **Claymorphism reskin** — verified by build + syntax + contrast checks only; the
+  actual look (soft 3D clay surfaces, fonts, hover/press feel) needs a real app
+  launch to confirm it reads as intended.
 - Lever and Ashby live fetches were not run (only Greenhouse verified live).
 - **Arc-style browser UI** — the tab sidebar, pinned boards, and save/fill login
   were not launched in a GUI; they pass syntax/build checks only. Tab switching,

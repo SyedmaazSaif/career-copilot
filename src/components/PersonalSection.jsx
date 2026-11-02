@@ -139,7 +139,7 @@ export default function PersonalSection() {
                   />
                 )}
                 {f.hint && (
-                  <small style={{ color: "#667284", fontSize: 12, marginTop: 4 }}>
+                  <small style={{ color: "#5f5a7a", fontSize: 12, marginTop: 4 }}>
                     {f.hint}
                   </small>
                 )}

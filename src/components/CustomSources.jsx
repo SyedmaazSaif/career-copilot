@@ -181,9 +181,9 @@ export default function CustomSources() {
       {resolved &&
         (resolved.found ? (
           <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 12, color: "#667284" }}>Found:</span>
+            <span className="mono" style={{ fontSize: 12, color: "#5f5a7a" }}>Found:</span>
             <strong>{resolved.label}</strong>
-            <span className="mono" style={{ fontSize: 12, color: "#667284" }}>{resolved.url}</span>
+            <span className="mono" style={{ fontSize: 12, color: "#5f5a7a" }}>{resolved.url}</span>
             <button className="btn-secondary" onClick={addResolved} disabled={adding}>Add</button>
           </div>
         ) : (
