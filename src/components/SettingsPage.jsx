@@ -263,21 +263,22 @@ export default function SettingsPage() {
 
       <div className="panel" style={{ marginTop: 18 }}>
         <div className="panel-head">
-          <h2>Locations to search</h2>
+          <h2>Countries to search</h2>
           <span className="filter-count mono">
             {(config.locations || []).length} location
             {(config.locations || []).length === 1 ? "" : "s"}
           </span>
         </div>
         <p className="empty-hint" style={{ marginTop: 0 }}>
-          Add a city or country to also search there. Boards that filter by location
-          (LinkedIn, and Mustakbil for Pakistan) get a pass per location on top of the
-          default global search; the remote-only boards carry no on-site roles, so they
-          are searched globally either way. Leave empty to search everywhere.
+          Add a country (or a specific city) to also search there. Boards that filter
+          by location (LinkedIn, and Mustakbil for Pakistan) get a pass per location on
+          top of the default global search; the remote-only boards carry no on-site
+          roles, so they are searched globally either way. Leave empty to search
+          everywhere.
         </p>
         <div className="term-add">
           <input
-            placeholder="e.g. Islamabad, Dubai, United Kingdom"
+            placeholder="e.g. United Kingdom, Germany, Dubai"
             value={newLocation}
             onChange={(e) => setNewLocation(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addLocation()}

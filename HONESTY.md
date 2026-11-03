@@ -8,6 +8,13 @@
   Platforms, Fintech & AI Products"), while the job title is kept only in the
   filename. The "Target title" field that caused the mix-up was removed from
   the job page.
+- **Country filter** — new "Any country" dropdown on the jobs screen derives a
+  country from each job's free-text location (`src/countries.js`). The mapping
+  was exercised with node against real location strings ("USA" → United States,
+  "Corby, England, United Kingdom" → United Kingdom, "New South Wales, Australia"
+  → Australia, "Remote - US only" → United States). `npm run build` succeeds; the
+  Settings section is relabelled "Countries to search". The dropdown itself needs
+  a real app launch to click through (see Partial).
 - **CV output** — generated on a throwaway DB with a fake profile: filename
   `Syed_Maaz_Saif_Product_Manager.pdf`, PDF + Word copy both written to the
   chosen `cv_folder`, PDF text extractable (ATS-safe).

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import { countryOf } from "../countries.js";
 import MatchMeter from "./MatchMeter.jsx";
 
 // The app can only ever know whether you've applied, not what happened after
@@ -23,6 +24,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [locationQ, setLocationQ] = useState("");
+  const [country, setCountry] = useState("");
   const [stage, setStage] = useState("");
   const [source, setSource] = useState("");
   const [workType, setWorkType] = useState("");
@@ -83,6 +85,11 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     [jobs]
   );
 
+  const countries = useMemo(
+    () => [...new Set((jobs || []).map((j) => countryOf(j.location)).filter(Boolean))].sort(),
+    [jobs]
+  );
+
   // Relevance search: every whitespace-separated token must appear somewhere in
   // the job's text (title, company, tags, requirements, description). Partial
   // and any-order — "fintech pm" matches "Senior Product Manager, Fintech".
@@ -121,6 +128,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     const criteria = [];
     if (tokens.length) criteria.push((j) => (matchesRelevance(j, tokens) ? 1 : 0));
     if (loc) criteria.push((j) => ((j.location || "").toLowerCase().includes(loc) ? 1 : 0));
+    if (country) criteria.push((j) => (countryOf(j.location) === country ? 1 : 0));
     if (stage === "Sourced") criteria.push((j) => (j.stage === "Sourced" ? 1 : 0));
     if (stage === "Applied") criteria.push((j) => (j.stage !== "Sourced" ? 1 : 0));
     if (source) criteria.push((j) => (j.source === source ? 1 : 0));
@@ -177,6 +185,14 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
           value={locationQ}
           onChange={(e) => setLocationQ(e.target.value)}
         />
+        <select value={country} onChange={(e) => setCountry(e.target.value)}>
+          <option value="">Any country</option>
+          {countries.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
         <select value={stage} onChange={(e) => setStage(e.target.value)}>
           <option value="">Jobs + Applied</option>
           <option value="Sourced">Not applied</option>
