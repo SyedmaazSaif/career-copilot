@@ -99,7 +99,7 @@ def _numbers(s: str) -> list[str]:
 def build_cv_data(data: dict, job, answers: dict, use_ai: bool) -> dict:
     profile = data["profile"]
     emphasis = (answers.get("emphasis") or "").strip()
-    target_title = (answers.get("target_title") or job.title or (profile.title if profile else "")).strip()
+    target_title = (answers.get("target_title") or job.title or "").strip()
     max_bullets = 3 if (answers.get("length") == "concise") else 5
 
     selected = select_content(data, job, emphasis)
@@ -115,7 +115,8 @@ def build_cv_data(data: dict, job, answers: dict, use_ai: bool) -> dict:
 
     return {
         "name": profile.name if profile else "",
-        "title": target_title,
+        "title": (profile.title if profile else "").strip(),
+        "target_title": target_title,
         "contact": _contact_line1(profile),
         "contact2": _contact_line2(profile),
         "summary": profile.summary if profile else "",
@@ -373,7 +374,7 @@ def generate_cv(db: Session, job, answers: dict) -> dict:
     cv_data = build_cv_data(data, job, answers, use_ai)
     flags = verify_cv(cv_data, data)
 
-    stem = f"{_title_slug(cv_data['name'])}_{_title_slug(cv_data['title'], fallback='Role')}"
+    stem = f"{_title_slug(cv_data['name'])}_{_title_slug(cv_data.get('target_title') or cv_data['title'], fallback='Role')}"
     out_dir = _output_dir(data["profile"])
     pdf_path = out_dir / f"{stem}.pdf"
     docx_path = out_dir / f"{stem}.docx"
@@ -385,7 +386,7 @@ def generate_cv(db: Session, job, answers: dict) -> dict:
         "file_path": str(pdf_path),
         "filename": f"{stem}.pdf",
         "docx_path": str(docx_path),
-        "target_title": cv_data["title"],
+        "target_title": cv_data.get("target_title") or cv_data["title"],
         "used_ai": use_ai,
         "flags": flags,
     }

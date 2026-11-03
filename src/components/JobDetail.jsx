@@ -329,7 +329,6 @@ function ApplicationLinks({ job, onSaved }) {
 
 function CVSection({ job, onLatestCv }) {
   const [packs, setPacks] = useState(null);
-  const [targetTitle, setTargetTitle] = useState(job.title || "");
   const [emphasis, setEmphasis] = useState("");
   const [length, setLength] = useState("concise");
   const [busy, setBusy] = useState(false);
@@ -360,7 +359,7 @@ function CVSection({ job, onLatestCv }) {
     setError(null);
     try {
       await api.post(`/api/jobs/${job.id}/cv`, {
-        answers: { target_title: targetTitle, emphasis, length },
+        answers: { emphasis, length },
       });
       await load();
     } catch (e) {
@@ -378,10 +377,6 @@ function CVSection({ job, onLatestCv }) {
         job. Nothing is invented.
       </p>
       <div className="cv-form">
-        <label className="field">
-          <span className="field-label">Target title</span>
-          <input value={targetTitle} onChange={(e) => setTargetTitle(e.target.value)} />
-        </label>
         <label className="field">
           <span className="field-label">What to emphasize (optional)</span>
           <input

@@ -1,6 +1,13 @@
 # HONESTY.md
 
 ## Tested and working (ran locally, saw the result)
+- **CV headline fix** — a generated CV no longer prints the job's title under
+  the name. Generated a real PDF against the live profile for a fake
+  "Senior Technical Product Manager - AvaCloud" job and read the first lines:
+  the name is followed by the profile's own title ("Product Manager — Consumer
+  Platforms, Fintech & AI Products"), while the job title is kept only in the
+  filename. The "Target title" field that caused the mix-up was removed from
+  the job page.
 - **CV output** — generated on a throwaway DB with a fake profile: filename
   `Syed_Maaz_Saif_Product_Manager.pdf`, PDF + Word copy both written to the
   chosen `cv_folder`, PDF text extractable (ATS-safe).
