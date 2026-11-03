@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from . import taxonomy
 from .ats import is_ats_url
+from .countries import derive_country
 from .matching import score_job
 from .models import DismissedJob, Job, SearchConfig
 from .salary import parse_salary
@@ -234,6 +235,7 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
         title, company = _split_company(title, company)
         title = clean_title(title)
         location = raw.get("location", "") or "Remote"
+        country = derive_country(location)
 
         if company.lower() in blocked_companies:
             continue
@@ -281,6 +283,8 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
             match.last_seen_at = now
             match.missed_scans = 0
             match.sightings = (match.sightings or 1) + 1
+            if not match.country:
+                match.country = country
             if match.stage == "Closed" and match.closed_reason.startswith("not seen"):
                 match.stage = "Sourced"
                 match.closed_at = None
@@ -303,6 +307,7 @@ def ingest_jobs(db: Session, scraped: list[dict], profile: dict) -> tuple[int, i
             title=title,
             company=company,
             location=location,
+            country=country,
             url=url,
             description=description,
             requirements=extract_requirements(description),

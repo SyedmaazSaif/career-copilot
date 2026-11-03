@@ -137,6 +137,7 @@ class JobOut(ORMModel):
     title: str
     company: str
     location: str
+    country: str = ""
     url: str
     company_url: str | None = None
     description: str

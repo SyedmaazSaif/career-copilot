@@ -15,6 +15,13 @@
   → Australia, "Remote - US only" → United States). `npm run build` succeeds; the
   Settings section is relabelled "Countries to search". The dropdown itself needs
   a real app launch to click through (see Partial).
+- **Country tagging (backend)** — new `country` column on jobs, derived from
+  location at ingest and backfilled on the live DB (5,494 of 10,674 jobs got a
+  country). `derive_country` unit-tested (6 tests, including "New South Wales"
+  → Australia and "Northern America, LATAM…" → no country). Verified `JobOut`
+  returns the country ("USA" → United States). Career-page jobs flow through the
+  same ingest path, so they are tagged too. Full suite now 70 tests pass;
+  `npm run build` succeeds; `backend.main` imports cleanly.
 - **CV output** — generated on a throwaway DB with a fake profile: filename
   `Syed_Maaz_Saif_Product_Manager.pdf`, PDF + Word copy both written to the
   chosen `cv_folder`, PDF text extractable (ATS-safe).

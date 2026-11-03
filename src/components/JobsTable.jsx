@@ -3,6 +3,12 @@ import { api } from "../api.js";
 import { countryOf } from "../countries.js";
 import MatchMeter from "./MatchMeter.jsx";
 
+// Prefer the country the backend derived and stored; fall back to deriving it
+// from the location text (for any job ingested before the country column).
+function jobCountry(job) {
+  return job.country || countryOf(job.location);
+}
+
 // The app can only ever know whether you've applied, not what happened after
 // -- so the filter offers just those two buckets. Closed jobs are excluded by
 // the backend before they ever reach this table.
@@ -86,7 +92,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
   );
 
   const countries = useMemo(
-    () => [...new Set((jobs || []).map((j) => countryOf(j.location)).filter(Boolean))].sort(),
+    () => [...new Set((jobs || []).map((j) => jobCountry(j)).filter(Boolean))].sort(),
     [jobs]
   );
 
@@ -132,7 +138,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     if (loc) criteria.push((j) => ((j.location || "").toLowerCase().includes(loc) ? 1 : 0));
     if (country)
       criteria.push((j) => {
-        const c = countryOf(j.location);
+        const c = jobCountry(j);
         if (c === country) return 1; // in the chosen country
         return c ? 0 : 0.5; // no country: keep, rank last; other country: drop
       });
@@ -167,7 +173,7 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
           sum += v;
           if (v >= 1) matched += 1;
         }
-        const countryRank = country ? (countryOf(j.location) === country ? 0 : 1) : 0;
+        const countryRank = country ? (jobCountry(j) === country ? 0 : 1) : 0;
         return { job: j, matched, relevance: sum, countryRank };
       })
       .filter((x) => x.relevance > 0)

@@ -33,6 +33,7 @@ _COLUMN_ADDITIONS = {
     "job": {
         "work_type": "VARCHAR DEFAULT 'unknown'",
         "employment_type": "VARCHAR DEFAULT 'unknown'",
+        "country": "VARCHAR DEFAULT ''",
         "salary_min": "INTEGER",
         "salary_max": "INTEGER",
         "salary_text": "VARCHAR DEFAULT ''",
@@ -180,6 +181,28 @@ def _backfill_matching() -> None:
         session.commit()
 
 
+def _backfill_countries() -> None:
+    """Derive and store each job's country from its location text. Jobs that
+    predate the country column (and remote/unknown locations) stay empty."""
+    from .countries import derive_country
+    from .models import Job
+
+    with SessionLocal() as session:
+        rows = (
+            session.query(Job)
+            .filter((Job.country == "") | (Job.country.is_(None)))
+            .all()
+        )
+        changed = 0
+        for job in rows:
+            country = derive_country(job.location)
+            if country:
+                job.country = country
+                changed += 1
+        if changed:
+            session.commit()
+
+
 def init_db() -> None:
     """Create tables on first run. Models register themselves on Base."""
     # Import models so their tables are registered before create_all runs.
@@ -190,6 +213,7 @@ def init_db() -> None:
     _backfill_descriptions()
     _backfill_salaries()
     _backfill_matching()
+    _backfill_countries()
 
     # Ensure the singleton profile row (id=1) always exists so the UI has a
     # record to edit from the very first launch.

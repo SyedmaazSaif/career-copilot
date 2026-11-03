@@ -145,6 +145,7 @@ class Job(Base):
     title: Mapped[str] = mapped_column(String, default="")
     company: Mapped[str] = mapped_column(String, default="")
     location: Mapped[str] = mapped_column(String, default="")
+    country: Mapped[str] = mapped_column(String, default="")
     url: Mapped[str] = mapped_column(String, default="", index=True)
     # The company's own careers page, when known. Job boards often paywall or
     # gate the listing, so this is the link the user actually applies through.
