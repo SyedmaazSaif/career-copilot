@@ -119,16 +119,23 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
     const firstSeen = (j) =>
       j.first_scanned_at ? new Date(j.first_scanned_at).getTime() : 0;
     // "Newest first" overrides the ranking entirely; "Score" keeps the existing
-    // relevance-then-score order.
+    // relevance-then-score order. When a country is selected, jobs in that
+    // country always come first, and no-country jobs are pushed to the end.
     const order = (a, b) =>
-      sortBy === "newest"
+      (country ? a.countryRank - b.countryRank : 0) ||
+      (sortBy === "newest"
         ? firstSeen(b.job) - firstSeen(a.job) || b.job.score - a.job.score
-        : b.relevance - a.relevance || b.job.score - a.job.score;
+        : b.relevance - a.relevance || b.job.score - a.job.score);
 
     const criteria = [];
     if (tokens.length) criteria.push((j) => (matchesRelevance(j, tokens) ? 1 : 0));
     if (loc) criteria.push((j) => ((j.location || "").toLowerCase().includes(loc) ? 1 : 0));
-    if (country) criteria.push((j) => (countryOf(j.location) === country ? 1 : 0));
+    if (country)
+      criteria.push((j) => {
+        const c = countryOf(j.location);
+        if (c === country) return 1; // in the chosen country
+        return c ? 0 : 0.5; // no country: keep, rank last; other country: drop
+      });
     if (stage === "Sourced") criteria.push((j) => (j.stage === "Sourced" ? 1 : 0));
     if (stage === "Applied") criteria.push((j) => (j.stage !== "Sourced" ? 1 : 0));
     if (source) criteria.push((j) => (j.source === source ? 1 : 0));
@@ -160,12 +167,13 @@ export default function JobsTable({ onOpen, newOnly, onNewOnlyChange }) {
           sum += v;
           if (v >= 1) matched += 1;
         }
-        return { job: j, matched, relevance: sum };
+        const countryRank = country ? (countryOf(j.location) === country ? 0 : 1) : 0;
+        return { job: j, matched, relevance: sum, countryRank };
       })
       .filter((x) => x.relevance > 0)
       .sort(order);
     return { rows: scored, activeCount: active };
-  }, [jobs, search, locationQ, stage, source, workType, empType, minScore, minSalary, flagsOnly, sortBy]);
+  }, [jobs, search, locationQ, country, stage, source, workType, empType, minScore, minSalary, flagsOnly, sortBy]);
 
   if (jobs === null && !error) return <div className="muted">Loading…</div>;
   if (error) return <div className="banner error">{error}</div>;
