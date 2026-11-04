@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell, safeStorage } = require("electron");
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, shell, safeStorage, powerMonitor } = require("electron");
 const { spawn, execFile } = require("child_process");
 const fs = require("fs");
 const os = require("os");
@@ -72,14 +72,18 @@ function backendPython() {
   return process.platform === "win32" ? win : nix;
 }
 
+let appQuitting = false;
+
 function startBackend() {
+  // Never run two sidecars: the second could not bind port 8000 anyway.
+  if (backendProcess) return;
   const python = backendPython();
   // Run uvicorn from the career-copilot root so the `backend` package imports.
   const cwd = path.join(__dirname, "..");
   // The AI API key is decrypted in memory only, and handed to the backend as an
   // environment variable. It is never written to a file or logged.
   const aiKey = readAiKey() || "";
-  backendProcess = spawn(
+  const child = spawn(
     python,
     [
       "-m",
@@ -95,21 +99,103 @@ function startBackend() {
     { cwd, stdio: "inherit", windowsHide: true, env: { ...process.env, AI_API_KEY: aiKey } }
   );
 
-  backendProcess.on("error", (err) => {
+  backendProcess = child;
+
+  child.on("error", (err) => {
     console.error("[backend] failed to start:", err);
   });
-  backendProcess.on("exit", (code, signal) => {
+  child.on("exit", (code, signal) => {
     console.log(`[backend] exited code=${code} signal=${signal}`);
-    backendProcess = null;
+    if (backendProcess === child) backendProcess = null;
+    // An exit we did not ask for (a crash, or the OS killing it while the lid
+    // was closed) used to leave the window stuck on "backend offline" until
+    // the whole app was quit. Bring it back instead.
+    if (!child.stoppedOnPurpose && !appQuitting) {
+      scheduleBackendRestart("it exited unexpectedly");
+    }
   });
 }
 
 function stopBackend() {
   if (backendProcess && !backendProcess.killed) {
+    backendProcess.stoppedOnPurpose = true;
     // On Windows, SIGTERM maps to a hard kill of the child process.
     backendProcess.kill();
     backendProcess = null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Backend watchdog. The window can outlive the backend: closing the window on
+// macOS keeps the app alive in the Dock, and sleep can take the sidecar down.
+// These helpers make sure that whenever the app is in use, a backend is too.
+// ---------------------------------------------------------------------------
+
+// One quick /health probe: "ok", "down" (nothing listening) or "busy" (it is
+// listening but slow, e.g. mid-scan). Only "down" justifies a restart; a busy
+// backend is never killed, so a running scan is never cut off.
+function probeBackend(timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    const req = http.get(`${BACKEND_URL}/health`, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200 ? "ok" : "busy");
+    });
+    req.on("error", () => resolve("down"));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve("busy");
+    });
+  });
+}
+
+let ensuring = null;
+const recentRestarts = [];
+
+// Make sure a backend is running and answering. Safe to call often and from
+// several places at once: concurrent calls share one check.
+function ensureBackend(reason) {
+  if (appQuitting) return Promise.resolve();
+  if (ensuring) return ensuring;
+  ensuring = (async () => {
+    try {
+      if ((await probeBackend()) !== "down") return;
+      // Right after wake the network stack can need a moment; look again
+      // before deciding the backend is really gone.
+      await new Promise((r) => setTimeout(r, 1000));
+      if ((await probeBackend()) !== "down") return;
+
+      // Stop a crash loop from spinning forever (e.g. a broken venv).
+      const now = Date.now();
+      while (recentRestarts.length && now - recentRestarts[0] > 120000) recentRestarts.shift();
+      if (recentRestarts.length >= 5) {
+        console.error("[backend] restarted 5 times in 2 minutes; giving up until next wake or window open");
+        return;
+      }
+      recentRestarts.push(now);
+
+      console.log(`[backend] not answering (${reason}); restarting it`);
+      stopBackend();
+      startBackend();
+      try {
+        await waitForBackend();
+        console.log("[backend] back online");
+      } catch (err) {
+        console.error("[backend] restart did not come up:", err.message);
+      }
+    } finally {
+      ensuring = null;
+    }
+  })();
+  return ensuring;
+}
+
+let restartTimer = null;
+function scheduleBackendRestart(reason) {
+  if (restartTimer || appQuitting) return;
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
+    ensureBackend(reason);
+  }, 1500);
 }
 
 // ---------------------------------------------------------------------------
@@ -1060,21 +1146,48 @@ if (!gotTheLock) {
     createWindow();
 
     app.on("activate", () => {
+      // Reopening from the Dock: the backend may have been stopped or lost
+      // while there was no window, so check before showing the app again.
+      ensureBackend("window reopened");
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+
+    // Waking from sleep (lid opened) or unlocking the screen: check the
+    // backend is still there and restart it if not. Delayed a little so the
+    // system has finished waking up.
+    const checkAfterWake = (why) => setTimeout(() => ensureBackend(why), 2000);
+    powerMonitor.on("resume", () => checkAfterWake("woke from sleep"));
+    powerMonitor.on("unlock-screen", () => checkAfterWake("screen unlocked"));
+
+    // Cheap safety net for anything the events above miss. Only restarts a
+    // backend that is gone, never one that is merely busy.
+    setInterval(() => ensureBackend("periodic check"), 30000);
   });
 }
 
 app.on("window-all-closed", () => {
-  stopBackend();
-  if (process.platform !== "darwin") app.quit();
+  // On macOS the app stays alive in the Dock after its window closes, and
+  // clicking the Dock icon reopens the window. Stopping the backend here used
+  // to leave that reopened window with no backend ("Failed to fetch") until
+  // the app was fully quit, so on macOS it keeps running with the app.
+  if (process.platform !== "darwin") {
+    stopBackend();
+    app.quit();
+  }
 });
 
 // Belt and suspenders: kill the sidecar on every exit path.
-app.on("before-quit", stopBackend);
-app.on("will-quit", stopBackend);
+app.on("before-quit", () => {
+  appQuitting = true;
+  stopBackend();
+});
+app.on("will-quit", () => {
+  appQuitting = true;
+  stopBackend();
+});
 process.on("exit", stopBackend);
 process.on("SIGINT", () => {
+  appQuitting = true;
   stopBackend();
   app.quit();
 });

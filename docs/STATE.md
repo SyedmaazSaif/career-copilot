@@ -37,6 +37,7 @@ commit log is that record.
   only ever filled with PM/office jobs and a welder/nurse saw nothing. Queries
   now come from the user's titles + distinctive skills, capped at 15. Verified
   live: `run_scan(queries=["welder"])` over LinkedIn returns 20 welding jobs.
+- **Backend self-heals after sleep / window reopen** (`electron/main.js`, `src/App.jsx`): on macOS the backend now keeps running while the app lives in the Dock (window-all-closed used to stop it, and reopening the window never restarted it, which left "Failed to fetch" until a full quit). A watchdog (`ensureBackend`) restarts it on Dock reopen, wake from sleep, screen unlock, unexpected exit and every 30s. It only restarts when nothing is listening on :8000, never a busy backend, and allows at most 5 restarts per 2 minutes. The window rechecks /health continuously and remounts the open page when the backend returns. Diagnosed and written by Claude; applied by pi.
 
 ## Ideas rejected
 

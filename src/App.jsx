@@ -15,19 +15,56 @@ const NAV = [
 export default function App() {
   const [view, setView] = useState("profile");
   const [online, setOnline] = useState(null); // null=checking, true, false
+  // Bumped each time the backend comes back after being unreachable, which
+  // remounts the open page so it reloads its data instead of keeping a stale
+  // "Failed to fetch" error on screen.
+  const [reconnects, setReconnects] = useState(0);
   const [update, setUpdate] = useState(null); // {current, latest, url} | null
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
 
+  // Keep checking the backend, not just once at launch. After the laptop wakes
+  // from sleep (or the window is reopened) the backend can be briefly away
+  // while the app restarts it; this notices when it is back and refreshes.
   useEffect(() => {
     let alive = true;
-    api
-      .health()
-      .then(() => alive && setOnline(true))
-      .catch(() => alive && setOnline(false));
+    let last = null;
+    const check = () => {
+      api
+        .health()
+        .then(() => {
+          if (!alive) return;
+          if (last === false) setReconnects((n) => n + 1);
+          last = true;
+          setOnline(true);
+        })
+        .catch(() => {
+          if (!alive) return;
+          last = false;
+          setOnline(false);
+        });
+    };
+    check();
+    // Faster while offline so recovery shows up within a couple of seconds.
+    let timer;
+    const loop = () => {
+      timer = setTimeout(() => {
+        check();
+        loop();
+      }, last === false ? 2000 : 10000);
+    };
+    loop();
+    const onVisible = () => document.visibilityState === "visible" && check();
+    window.addEventListener("focus", check);
+    window.addEventListener("online", check);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
+      clearTimeout(timer);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("online", check);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
@@ -133,9 +170,9 @@ export default function App() {
             </span>
           </div>
         )}
-        {view === "profile" && <ProfilePage />}
-        {view === "jobs" && <JobsPage />}
-        {view === "settings" && <SettingsPage />}
+        {view === "profile" && <ProfilePage key={`profile-${reconnects}`} />}
+        {view === "jobs" && <JobsPage key={`jobs-${reconnects}`} />}
+        {view === "settings" && <SettingsPage key={`settings-${reconnects}`} />}
       </main>
     </div>
   );
