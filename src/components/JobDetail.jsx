@@ -29,6 +29,26 @@ function openInBrowser(url) {
   else window.open(url, "_blank", "noreferrer");
 }
 
+// The link the main Apply button should open: the resolved company/ATS link
+// when we have one, otherwise the original listing.
+function applyUrl(job) {
+  return job.direct_url || job.company_url || job.url;
+}
+function applyLabel(job) {
+  if (job.direct_url || job.company_url) {
+    return job.link_type === "careers_page" ? "Open careers page" : "Apply on company site";
+  }
+  return "Open listing to apply";
+}
+function applyStatus(job) {
+  if (job.direct_url || job.company_url) {
+    return job.link_type === "careers_page"
+      ? "Careers page — find the job there."
+      : "Company site.";
+  }
+  return "Original link — may be paywalled.";
+}
+
 export default function JobDetail({ jobId, onClose, onChanged }) {
   const [job, setJob] = useState(null);
   const [error, setError] = useState(null);
@@ -168,13 +188,14 @@ export default function JobDetail({ jobId, onClose, onChanged }) {
             <ApplicationLinks job={job} onSaved={setJob} />
 
             <div className="modal-actions">
-              <button className="btn-apply" onClick={() => openToApply(job.url, latestCvPath)}>
-                Open listing to apply
+              <button className="btn-apply" onClick={() => openToApply(applyUrl(job), latestCvPath)}>
+                {applyLabel(job)}
               </button>
               <button className="btn-danger" onClick={remove}>
                 Remove job
               </button>
               <span className="apply-note">
+                {applyStatus(job)}{" "}
                 Opens in the app's browser. You apply manually — the app never submits
                 for you.
               </span>
@@ -211,8 +232,11 @@ function ApplicationLinks({ job, onSaved }) {
   const [copied, setCopied] = useState(null); // which url was just copied
   const [finding, setFinding] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(job.company_url || "");
+  const [draft, setDraft] = useState(job.direct_url || job.company_url || "");
   const [note, setNote] = useState(null);
+
+  const directUrl = job.direct_url || job.company_url || null;
+  const directLabel = job.link_type === "careers_page" ? "Careers page" : "Company site";
 
   async function copy(url) {
     try {
@@ -229,8 +253,8 @@ function ApplicationLinks({ job, onSaved }) {
     setNote(null);
     try {
       const res = await api.post(`/api/jobs/${job.id}/find-company-site`, {});
-      if (res.company_url) {
-        onSaved({ ...job, company_url: res.company_url });
+      if (res.direct_url) {
+        onSaved({ ...job, direct_url: res.direct_url, link_type: res.link_type, company_url: res.direct_url });
       } else {
         setNote("Couldn't find it — paste the company's careers link yourself.");
         setEditing(true);
@@ -245,7 +269,7 @@ function ApplicationLinks({ job, onSaved }) {
   async function saveDraft() {
     try {
       const updated = await api.patch(`/api/jobs/${job.id}`, {
-        company_url: draft.trim(),
+        direct_url: draft.trim(),
       });
       onSaved(updated);
       setEditing(false);
@@ -260,19 +284,25 @@ function ApplicationLinks({ job, onSaved }) {
       <h3>Application links</h3>
       <div className="link-rows">
         <LinkRow
-          label="Listing"
+          label={directUrl ? "Listing" : "Original link"}
           url={job.url}
           onCopy={copy}
           copied={copied === job.url}
         />
 
-        {job.company_url && !editing && (
+        {directUrl && !editing && (
           <LinkRow
-            label="Company site"
-            url={job.company_url}
+            label={directLabel}
+            url={directUrl}
             onCopy={copy}
-            copied={copied === job.company_url}
+            copied={copied === directUrl}
           />
+        )}
+
+        {!directUrl && !editing && (
+          <p className="empty-hint" style={{ marginTop: 0 }}>
+            Original link — may be paywalled.
+          </p>
         )}
 
         {editing ? (
@@ -292,7 +322,7 @@ function ApplicationLinks({ job, onSaved }) {
             <button
               className="btn-secondary btn-sm"
               onClick={() => {
-                setDraft(job.company_url || "");
+                setDraft(directUrl || "");
                 setEditing(false);
               }}
             >
@@ -301,7 +331,7 @@ function ApplicationLinks({ job, onSaved }) {
           </div>
         ) : (
           <div className="link-row link-row-actions">
-            {!job.company_url && (
+            {!directUrl && (
               <button
                 className="btn-secondary btn-sm"
                 onClick={findSite}
@@ -313,11 +343,11 @@ function ApplicationLinks({ job, onSaved }) {
             <button
               className="link-btn"
               onClick={() => {
-                setDraft(job.company_url || "");
+                setDraft(directUrl || "");
                 setEditing(true);
               }}
             >
-              {job.company_url ? "Edit company link" : "Paste it yourself"}
+              {directUrl ? "Edit company link" : "Paste it yourself"}
             </button>
           </div>
         )}
