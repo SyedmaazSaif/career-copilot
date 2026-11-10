@@ -6,6 +6,8 @@ from unittest.mock import patch
 from backend.blocklist import is_blocked
 from backend.resolver import (
     ResolveResult,
+    _search_careers_page,
+    _search_job,
     build_slugs,
     locations_compatible,
     resolve_job,
@@ -97,6 +99,41 @@ class VerifyTests(unittest.TestCase):
         self.assertFalse(verify_direct_link("https://www.linkedin.com/jobs/view/1", "X"))
 
 
+class SearchJobTests(unittest.TestCase):
+    def test_rejects_mirror_site_with_company_in_path(self):
+        # A mirror site that embeds the company in its URL path must be rejected
+        # in favour of the company's own domain.
+        mirror = "https://campusbuilding.com/company/birdeye/jobs/1"
+        company_site = "https://birdeye.com/careers/"
+        with patch(
+            "backend.resolver._search_candidates",
+            return_value=[mirror, company_site],
+        ), patch("backend.resolver.verify_direct_link", return_value=True):
+            self.assertEqual(
+                _search_job("Birdeye", "Senior Product Manager"), company_site
+            )
+
+    def test_accepts_known_ats_domain(self):
+        ats = "https://ats.rippling.com/birdeye-inc/jobs/abc"
+        with patch(
+            "backend.resolver._search_candidates", return_value=[ats]
+        ), patch("backend.resolver.verify_direct_link", return_value=True):
+            self.assertEqual(
+                _search_job("Birdeye", "Senior Product Manager"), ats
+            )
+
+    def test_careers_page_rejects_mirror(self):
+        mirror = "https://jobera.com/employer/committee-for-children/"
+        company_site = "https://www.cfchildren.org/careers/"
+        with patch(
+            "backend.resolver._search_candidates",
+            return_value=[mirror, company_site],
+        ):
+            self.assertEqual(
+                _search_careers_page("Committee for Children"), company_site
+            )
+
+
 class ResolveJobTests(unittest.TestCase):
     def _job(self, url, company="Stripe", title="Product Manager", location="Remote"):
         return SimpleNamespace(
@@ -140,7 +177,7 @@ class ResolveJobTests(unittest.TestCase):
         ), patch("backend.resolver._ats_lookup", return_value=None), patch(
             "backend.resolver._search_job", return_value=None
         ), patch(
-            "backend.resolver._search_careers", return_value=None
+            "backend.resolver._search_careers_page", return_value=None
         ):
             result = resolve_job(
                 None, self._job("https://www.linkedin.com/jobs/view/1")

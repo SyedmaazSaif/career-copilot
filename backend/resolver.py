@@ -41,7 +41,6 @@ from .company_site import (
     _ddg_results,
     _is_ats,
     _root,
-    _search_careers,
 )
 from .models import Company, Job
 
@@ -83,6 +82,16 @@ _NAME_NOISE = {
     "solutions", "services",
 }
 
+# ATS domains whose public job boards host the employer's own posting. Used to
+# decide which search results are trustworthy (an employer's posting can live on
+# any of these, independent of the company's own domain name).
+_SEARCH_ATS_HOSTS = (
+    "greenhouse.io", "lever.co", "workable.com", "ashbyhq.com",
+    "bamboohr.com", "smartrecruiters.com", "recruitee.com",
+    "myworkdayjobs.com", "teamtailor.com", "jobvite.com", "icims.com",
+    "rippling.com", "pinpointhq.com", "personio.com",
+)
+
 _CLOSED_PHRASES = (
     "position has been filled",
     "this job is no longer",
@@ -116,6 +125,34 @@ def _name_words(company: str) -> list[str]:
 
 def _norm_name(company: str) -> str:
     return "".join(_name_words(company))
+
+
+def _is_search_ats(url: str) -> bool:
+    """True when a search result is on a known ATS job-board domain — these host
+    the employer's own posting, whatever the employer's own domain is."""
+    host = host_of(url)
+    return any(host == h or host.endswith("." + h) for h in _SEARCH_ATS_HOSTS)
+
+
+def _domain_relevant(company: str, url: str) -> bool:
+    """Does the company's name appear in the result's hostname? A mirror/board
+    site that embeds the company in its URL path is not the company's own site."""
+    host = host_of(url)
+    words = [
+        w for w in re.findall(r"[a-z0-9]+", (company or "").lower())
+        if len(w) >= 3 and w not in _NAME_NOISE
+    ]
+    if not words:
+        return False
+    compact = "".join(words)
+    if compact in host:
+        return True
+    # Any distinctive word (5+ chars) in the host is a strong signal — this
+    # catches abbreviations like cfchildren.org for "Committee for Children".
+    if any(w in host for w in words if len(w) >= 5):
+        return True
+    longest = max(words, key=len)
+    return longest in host
 
 
 def build_slugs(company: str) -> list[str]:
@@ -303,16 +340,40 @@ def _search_candidates(query: str) -> list[str]:
 def _search_job(company: str, title: str) -> str | None:
     """Step D: search for the exact job, prefer ATS/company domains, and verify
     before returning (a search result is a guess, so it must be checked)."""
+    if not company.strip():
+        return None
     query = f'"{company}" "{title}" careers'
     candidates = _search_candidates(query)
-    preferred = [u for u in candidates if _is_ats(u)]
-    rest = [u for u in candidates if not _is_ats(u)]
+    # Accept known ATS domains outright. For anything else, the company's name
+    # must be in the *domain* — a mirror site that embeds the company in its URL
+    # path is an aggregator, not the employer, and is worse than no link.
+    preferred = [u for u in candidates if _is_search_ats(u)]
+    rest = [u for u in candidates if _domain_relevant(company, u)]
     for u in (preferred + rest)[:8]:
         if not is_direct_candidate(u):
             continue
         if verify_direct_link(u, title):
             return u
     return None
+
+
+def _search_careers_page(company: str) -> str | None:
+    """Step E: the company's own careers/jobs page, from its own domain only (a
+    mirror board that embeds the company in its URL path is rejected)."""
+    if not company.strip():
+        return None
+    candidates = _search_candidates(f"{company} careers")
+    own = [
+        u for u in candidates
+        if is_direct_candidate(u) and _domain_relevant(company, u)
+    ]
+    if not own:
+        return None
+    careers = next(
+        (u for u in own if re.search(r"career|jobs|join-us|work-with-us", u, re.I)),
+        None,
+    )
+    return _root(careers or own[0])
 
 
 # ---------------------------------------------------------------------------
@@ -354,9 +415,9 @@ def resolve_job(db: Session, job: Job) -> ResolveResult:
             return ResolveResult(found, DIRECT_JOB, VIA_SEARCH)
 
         # E) Careers page fallback.
-        careers = _search_careers(company)
-        if careers and is_direct_candidate(careers):
-            return ResolveResult(_root(careers) or careers, CAREERS_PAGE, VIA_CAREERS_PAGE)
+        careers = _search_careers_page(company)
+        if careers:
+            return ResolveResult(careers, CAREERS_PAGE, VIA_CAREERS_PAGE)
 
         # F) Nothing found.
         return ResolveResult(None, ORIGINAL, VIA_NONE)
