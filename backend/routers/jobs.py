@@ -8,19 +8,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import keywords, scan_manager
-from ..company_site import find_company_site
+from ..ats import is_ats_url
 from ..custom_scrapers import fetch_single_job
 from ..http_client import robots_allows
 from ..db import get_db
 from ..ingest import dedupe_key, ingest_jobs
 from ..matching import SCORE_VERSION, build_profile, score_job
 from ..models import STAGES, DismissedJob, Job, Profile, ScrapeRun, SearchConfig
+from ..resolver import resolve_due_jobs, resolve_job
 from ..schemas import (
     AddJobByUrl,
-    CompanySiteOut,
     DismissedJobOut,
     JobOut,
     JobPatch,
+    JobResolveOut,
     ScanStatus,
     ScrapeRunOut,
 )
@@ -423,19 +424,41 @@ def get_keyword_gaps(job_id: int, db: Session = Depends(get_db)):
     return keywords.keyword_gaps(db, job)
 
 
-@router.post("/{job_id}/find-company-site", response_model=CompanySiteOut)
+@router.post("/{job_id}/find-company-site", response_model=JobResolveOut)
 def find_company_site_for_job(job_id: int, db: Session = Depends(get_db)):
     """Best-effort: resolve the company's own careers/application page and save
-    it. Returns null when nothing convincing turns up — that is not an error, the
-    user can paste the right link by hand."""
+    it. Returns link_type 'original' with a null direct_url when nothing
+    convincing turns up — that is not an error, the user can paste the right
+    link by hand."""
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(404, "job not found")
-    url = find_company_site(job.url or "", job.company or "")
-    if url:
-        job.company_url = url
-        db.commit()
-    return CompanySiteOut(company_url=url)
+    result = resolve_job(db, job)
+    job.direct_url = result.direct_url
+    job.link_type = result.link_type
+    job.resolved_via = result.resolved_via
+    job.resolved_at = datetime.utcnow()
+    if result.direct_url:
+        job.company_url = result.direct_url  # keep the legacy column in sync
+    db.commit()
+    db.refresh(job)
+    return JobResolveOut(
+        direct_url=job.direct_url,
+        link_type=job.link_type,
+        resolved_via=job.resolved_via,
+        resolved_at=job.resolved_at,
+    )
+
+
+@router.post("/resolve-backfill")
+def resolve_backfill(
+    db: Session = Depends(get_db), limit: int = Query(100, ge=1, le=1000)
+):
+    """Run the direct-link resolver over already-saved jobs that still need it.
+    Bounded and inline; the CLI (`python -m backend.resolve_backfill`) does the
+    full pass for a one-off cleanup."""
+    stats = resolve_due_jobs(db, limit=limit)
+    return stats
 
 
 @router.patch("/{job_id}", response_model=JobOut)
@@ -452,8 +475,17 @@ def patch_job(job_id: int, payload: JobPatch, db: Session = Depends(get_db)):
         job.sort_order = payload.sort_order
     if payload.notes is not None:
         job.notes = payload.notes
-    if payload.company_url is not None:
-        job.company_url = payload.company_url.strip() or None
+    if payload.direct_url is not None:
+        val = payload.direct_url.strip() or None
+        job.direct_url = val
+        job.company_url = val  # legacy column, kept in sync
+        if val:
+            job.link_type = "direct_job" if is_ats_url(val) else "careers_page"
+            job.resolved_via = "manual"
+        else:
+            job.link_type = "original"
+            job.resolved_via = "none"
+        job.resolved_at = datetime.utcnow()
 
     db.commit()
     db.refresh(job)

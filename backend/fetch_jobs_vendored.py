@@ -140,6 +140,17 @@ def fetch_arbeitnow(q: str) -> list:
 
 
 # ─── Source 3: Himalayas ───────────────────────────────────────────────
+def _himalayas_url(link: str) -> str:
+    """Himalayas' applicationLink is already a full himalayas.app URL; the old
+    code prefixed it again and produced 'https://himalayas.apphttps://…'."""
+    link = (link or "").strip()
+    if not link:
+        return ""
+    if link.startswith(("http://", "https://")):
+        return link
+    return "https://himalayas.app" + link
+
+
 def fetch_himalayas(q: str) -> list:
     try:
         r = requests.get(
@@ -154,7 +165,7 @@ def fetch_himalayas(q: str) -> list:
             "title": j.get("title"),
             "company": j.get("companyName"),
             "location": "Remote",
-            "url": f"https://himalayas.app{j.get('applicationLink', '')}",
+            "url": _himalayas_url(j.get("applicationLink", "")),
             "description": j.get("excerpt", ""),
             "posted": j.get("pubDate", ""),
         }) for j in r.json().get("jobs", [])]

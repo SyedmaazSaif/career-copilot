@@ -140,6 +140,10 @@ class JobOut(ORMModel):
     country: str = ""
     url: str
     company_url: str | None = None
+    direct_url: str | None = None
+    link_type: str = "original"
+    resolved_via: str = ""
+    resolved_at: datetime | None = None
     description: str
     requirements: list[str]
     posted: str
@@ -179,14 +183,17 @@ class JobPatch(BaseModel):
     stage: str | None = None
     sort_order: int | None = None
     notes: str | None = None
-    company_url: str | None = None
+    direct_url: str | None = None
 
 
-class CompanySiteOut(BaseModel):
-    """Result of a best-effort company careers-page lookup. company_url is null
-    when nothing convincing was found — that is a normal outcome, not an error."""
+class JobResolveOut(BaseModel):
+    """Result of resolving a job's direct link. direct_url is null when nothing
+    convincing was found — that is a normal outcome, not an error."""
 
-    company_url: str | None = None
+    direct_url: str | None = None
+    link_type: str = "original"
+    resolved_via: str = ""
+    resolved_at: datetime | None = None
 
 
 class DismissedJobOut(ORMModel):

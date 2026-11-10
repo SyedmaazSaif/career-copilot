@@ -151,6 +151,14 @@ class Job(Base):
     # gate the listing, so this is the link the user actually applies through.
     # Resolved best-effort by /api/jobs/{id}/find-company-site, or pasted by hand.
     company_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Direct-link resolver fields (see resolver.py). direct_url is the resolved
+    # company/ATS link (empty when not found); link_type says what kind of link
+    # it is; resolved_via records which method found it; resolved_at is when it
+    # was last attempted. company_url is the legacy single-field predecessor.
+    direct_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    link_type: Mapped[str] = mapped_column(String, default="original")  # direct_job|careers_page|original
+    resolved_via: Mapped[str] = mapped_column(String, default="")  # source_field|redirect|ats|search|careers_page|none|legacy|manual
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
     requirements: Mapped[list] = mapped_column(JSON, default=list)  # extracted lines
     posted: Mapped[str] = mapped_column(String, default="")

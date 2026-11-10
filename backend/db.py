@@ -39,6 +39,10 @@ _COLUMN_ADDITIONS = {
         "salary_text": "VARCHAR DEFAULT ''",
         "salary_parsed": "BOOLEAN DEFAULT 0",
         "company_url": "VARCHAR",
+        "direct_url": "VARCHAR",
+        "link_type": "VARCHAR DEFAULT 'original'",
+        "resolved_via": "VARCHAR DEFAULT ''",
+        "resolved_at": "DATETIME",
         "category": "VARCHAR DEFAULT 'unclassified'",
         "score_version": "INTEGER DEFAULT 0",
         "explanations": "JSON",
@@ -203,6 +207,34 @@ def _backfill_countries() -> None:
             session.commit()
 
 
+def _backfill_direct_url() -> None:
+    """Migrate the legacy single `company_url` field into the new direct-link
+    resolver fields, for databases that predate this feature. Existing data is
+    only ever read, never deleted."""
+    from .ats import is_ats_url
+    from .models import Job
+
+    with SessionLocal() as session:
+        rows = (
+            session.query(Job)
+            .filter(
+                (Job.direct_url.is_(None)) | (Job.direct_url == ""),
+                Job.company_url.isnot(None),
+                Job.company_url != "",
+            )
+            .all()
+        )
+        changed = 0
+        for job in rows:
+            job.direct_url = job.company_url
+            job.link_type = "direct_job" if is_ats_url(job.company_url or "") else "careers_page"
+            job.resolved_via = "legacy"
+            job.resolved_at = datetime.utcnow()
+            changed += 1
+        if changed:
+            session.commit()
+
+
 def init_db() -> None:
     """Create tables on first run. Models register themselves on Base."""
     # Import models so their tables are registered before create_all runs.
@@ -214,6 +246,7 @@ def init_db() -> None:
     _backfill_salaries()
     _backfill_matching()
     _backfill_countries()
+    _backfill_direct_url()
 
     # Ensure the singleton profile row (id=1) always exists so the UI has a
     # record to edit from the very first launch.

@@ -47,15 +47,9 @@ ATS_HOSTS = (
     "smartrecruiters.com",
 )
 
-# Hosts that are never a company's own careers site.
-_AGGREGATORS = (
-    "duckduckgo.com", "google.", "bing.com", "linkedin.com", "indeed.",
-    "glassdoor.", "remoteok.com", "remotive.com", "himalayas.app",
-    "weworkremotely.com", "wellfound.com", "hiring.cafe", "arbeitnow.com",
-    "remote.co", "ziprecruiter.com", "monster.com", "jobs.", "facebook.com",
-    "twitter.com", "x.com", "youtube.com", "wikipedia.org", "crunchbase.com",
-    "reddit.com", "mustakbil.com", "rozee.pk",
-)
+# Hosts that are never a company's own careers site now live in
+# `aggregator_blocklist.json` (see blocklist.py) so they can be edited without
+# touching code.
 
 
 def _host(url: str) -> str:
@@ -71,14 +65,15 @@ def _is_ats(url: str) -> bool:
 
 
 def _is_aggregator(url: str) -> bool:
-    host = _host(url)
-    return any(a in host for a in _AGGREGATORS)
+    from .blocklist import is_blocked
+
+    return is_blocked(url)
 
 
-def _follow_redirects(url: str) -> str | None:
+def _follow_redirects(url: str, timeout: int = 10) -> str | None:
     """The listing's final destination after redirects, or None."""
     try:
-        r = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=True)
+        r = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
         return str(r.url) or None
     except Exception as exc:
         print(f"[company-site] redirect follow failed for {url}: {exc}", file=sys.stderr)

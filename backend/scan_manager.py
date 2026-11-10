@@ -23,6 +23,7 @@ from .db import SessionLocal
 from .ingest import ingest_jobs
 from .matching import build_profile, derive_queries
 from .models import CustomSource, Job, ScrapeRun, SearchConfig
+from .resolver import DEFAULT_SCAN_RESOLVE_LIMIT, resolve_due_jobs
 from .scrapers import run_scan
 
 _lock = threading.Lock()
@@ -219,6 +220,16 @@ def _run(run_id: int) -> None:
                 print(f"[registry] auto-added {added_companies} company board(s)")
             if dropped_companies:
                 print(f"[registry] dropped {dropped_companies} failing board(s)")
+
+            # Direct-link resolver: run over stored jobs that still need a link.
+            # Bounded per scan so a scan stays fast; the backfill command handles
+            # the backlog. A resolver problem must never stop the scan.
+            try:
+                resolve_stats = resolve_due_jobs(db, limit=DEFAULT_SCAN_RESOLVE_LIMIT)
+                print(f"[resolver] this scan: {resolve_stats}")
+            except Exception as exc:
+                print(f"[resolver] scan pass failed: {exc}")
+
             source_health = {}
             for name, fetched in (run.source_counts or {}).items():
                 h = health.get(name, {})
