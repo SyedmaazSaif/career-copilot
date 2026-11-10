@@ -1,6 +1,18 @@
 # HONESTY.md
 
 ## Tested and working (ran locally, saw the result)
+- **Direct-link resolver** — new `direct_url` / `link_type` / `resolved_via` /
+  `resolved_at` fields; an ordered resolver (source field → redirects → ATS
+  slug lookup → web search → careers page) with verification before saving; and
+  a config-file aggregator blocklist. Backfill ran on 32 real jobs: 21
+  direct_job, 10 careers_page, 1 original (methods: source_field 12, ats 9,
+  careers_page 10, none 1). 5 direct_job links open-checked live — all returned
+  HTTP 200 with the job title on the page. Mirror/aggregator domains
+  (role.com, jobee.pro, campusbuilding.com, statenaukri.com, sprouthrjobs.com,
+  jobera.com) are rejected by a company-name-in-domain + known-ATS check and
+  blocklisted. 91 unit tests pass; `npm run build` succeeds; `backend.main`
+  imports cleanly. Also fixed a Himalayas scraper bug that double-prefixed its
+  `applicationLink`.
 - **CV headline fix** — a generated CV no longer prints the job's title under
   the name. Generated a real PDF against the live profile for a fake
   "Senior Technical Product Manager - AvaCloud" job and read the first lines:
@@ -105,6 +117,10 @@
   Google sign-in or account access is requested; the source is off and not built.
 - **Settings UI (target companies, exclusion words/industries)** — builds cleanly
   but needs a real app launch to confirm end-to-end.
+- **Direct-link resolver in the live scan + UI** — the resolver runs at the end
+  of each scan (capped at 10 jobs/scan) and the Apply button/labels are wired,
+  but neither was launched in a GUI. The in-app browser opening a resolved
+  direct link, and the automatic per-scan resolution, need a real app launch.
 
 ## Needs human review
 - Privacy: generated files and the profile stay local. `cv_folder` is a user-set
