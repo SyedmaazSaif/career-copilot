@@ -1,6 +1,15 @@
 # HONESTY.md
 
 ## Tested and working (ran locally, saw the result)
+- **Netherlands companies** — added 16 companies to the target-companies scanner
+  (Optiver, Flow Traders, Maven Securities, BlockTech, Leaseweb, Bitvavo, Stream,
+  Plumerai, GreenFlux, Gerimedica, OLYX, Flexport, A2G Consulting, Wypoon,
+  Riverflex, Rightangled). New connectors verified live: `recruitee`
+  (`{slug}.recruitee.com/api/offers`), `teamtailor` (`{slug}.teamtailor.com/jobs.json`),
+  `rss` (any jobs feed), and `optiver` (parses the sitemap). Fetched 580 jobs
+  across the 16 and ingested 403 new jobs into the DB; Product Manager /
+  Business Analyst / Program Manager roles are present. 91 unit tests pass;
+  `backend.main` imports cleanly.
 - **Direct-link resolver** — new `direct_url` / `link_type` / `resolved_via` /
   `resolved_at` fields; an ordered resolver (source field → redirects → ATS
   slug lookup → web search → careers page) with verification before saving; and
@@ -121,6 +130,13 @@
   of each scan (capped at 10 jobs/scan) and the Apply button/labels are wired,
   but neither was launched in a GUI. The in-app browser opening a resolved
   direct link, and the automatic per-scan resolution, need a real app launch.
+- **Secfi + AMOLF** — no public, machine-readable job source found (Secfi uses a
+  Homerun JS embed whose account slug isn't discoverable from the page; AMOLF is
+  a custom WordPress site with no vacancy feed/API). Both are added disabled as
+  "needs source" and are not scanned.
+- **Optiver** — jobs come from the sitemap and titles are derived from the URL
+  slug (no description fetched), so titles are approximate. Ingest of the ~580
+  new-company jobs took ~7–8 min (scoring is CPU-bound) — existing behaviour.
 
 ## Needs human review
 - Privacy: generated files and the profile stay local. `cv_folder` is a user-set
