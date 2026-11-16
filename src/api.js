@@ -22,9 +22,12 @@ async function req(method, path, body) {
   return res.json();
 }
 
-async function upload(path, file) {
+async function upload(path, file, fields = {}) {
   const form = new FormData();
   form.append("file", file);
+  for (const [k, v] of Object.entries(fields)) {
+    if (v != null && v !== "") form.append(k, v);
+  }
   const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
   if (!res.ok) {
     let detail = `${res.status}`;

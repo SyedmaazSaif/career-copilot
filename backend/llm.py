@@ -17,8 +17,9 @@ def provider() -> str:
     return (os.getenv("AI_PROVIDER", "ollama") or "ollama").strip().lower()
 
 
-def _client():
-    return ollama_client if provider() == "ollama" else deepseek_client
+def _client_for(p: str | None = None):
+    name = (p or provider()).strip().lower()
+    return ollama_client if name == "ollama" else deepseek_client
 
 
 def status() -> dict:
@@ -35,13 +36,13 @@ def status() -> dict:
     }
 
 
-def preflight() -> str | None:
-    return _client().preflight()
+def preflight(p: str | None = None) -> str | None:
+    return _client_for(p).preflight()
 
 
-def generate(prompt: str, **kwargs):
-    return _client().generate(prompt, **kwargs)
+def generate(prompt: str, *, provider: str | None = None, **kwargs):
+    return _client_for(provider).generate(prompt, **kwargs)
 
 
-def generate_json(prompt: str, **kwargs):
-    return _client().generate_json(prompt, **kwargs)
+def generate_json(prompt: str, *, provider: str | None = None, **kwargs):
+    return _client_for(provider).generate_json(prompt, **kwargs)

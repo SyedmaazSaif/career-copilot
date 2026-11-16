@@ -1,28 +1,61 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 
+const PROVIDER_LABEL = {
+  ollama: "local AI (Ollama)",
+  deepseek: "DeepSeek",
+  custom: "your API",
+};
+
+// A short, helpful nudge when the chosen model couldn't read the resume.
+function hintFor(error, provider) {
+  if (!error) return "";
+  const e = error.toLowerCase();
+  if (provider === "ollama") {
+    if (e.includes("switched off"))
+      return "Your local AI is switched off. Turn it on in Settings → AI model, or pick a paid model above.";
+    if (e.includes("not reachable"))
+      return "Ollama isn't running. Start it in Settings → AI model, or pick a paid model above.";
+    if (e.includes("not installed"))
+      return "The local model isn't downloaded yet. Set it up in Settings → AI model, or pick a paid model above.";
+  } else {
+    if (e.includes("no api key"))
+      return "No API key is set. Add it in Settings → AI model, or pick the local model above.";
+  }
+  return "It couldn't read with that model. Pick another model above, or check Settings → AI model.";
+}
+
 // Upload a resume (PDF/DOCX), preview what was read, then apply it to the profile.
+// The user picks which AI model reads it; if that model isn't ready, the app says
+// so clearly instead of silently falling back.
 export default function ResumeUpload({ onApplied }) {
   const fileRef = useRef(null);
   const [state, setState] = useState("idle"); // idle | parsing | preview | applying
+  const [file, setFile] = useState(null);
+  const [provider, setProvider] = useState("ollama");
   const [parsed, setParsed] = useState(null);
   const [usedAi, setUsedAi] = useState(false);
   const [aiNote, setAiNote] = useState(null); // why the AI pass fell short
   const [error, setError] = useState(null);
+
+  // Default to whatever model is set in Settings, so nothing changes unless the
+  // user chooses something different here.
+  useEffect(() => {
+    api.get("/api/ai/config")
+      .then((c) => { if (c && c.provider) setProvider(c.provider); })
+      .catch(() => {});
+  }, []);
 
   function pick() {
     setError(null);
     fileRef.current?.click();
   }
 
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file) return;
+  async function parse(theFile, prov) {
     setState("parsing");
     setError(null);
     try {
-      const res = await api.upload("/api/ai/resume/parse", file);
+      const res = await api.upload("/api/ai/resume/parse", theFile, { provider: prov });
       setParsed(res.data);
       setUsedAi(res.used_ai);
       setAiNote(res.error || null);
@@ -33,12 +66,25 @@ export default function ResumeUpload({ onApplied }) {
     }
   }
 
+  async function onFile(e) {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!f) return;
+    setFile(f);
+    await parse(f, provider);
+  }
+
+  async function reparse() {
+    if (file) await parse(file, provider);
+  }
+
   async function apply() {
     setState("applying");
     try {
       await api.post("/api/ai/resume/apply", { data: parsed, replace: true });
       setState("idle");
       setParsed(null);
+      setFile(null);
       onApplied?.();
     } catch (err) {
       setError(err.message);
@@ -55,6 +101,17 @@ export default function ResumeUpload({ onApplied }) {
       }
     : null;
 
+  const providerPicker = (
+    <label className="field" style={{ maxWidth: 420 }}>
+      <span className="field-label">Read with</span>
+      <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+        <option value="ollama">Ollama — local, free</option>
+        <option value="deepseek">DeepSeek — paid (your key)</option>
+        <option value="custom">Custom API — paid (your key)</option>
+      </select>
+    </label>
+  );
+
   return (
     <>
       <input
@@ -64,6 +121,11 @@ export default function ResumeUpload({ onApplied }) {
         style={{ display: "none" }}
         onChange={onFile}
       />
+
+      <div className="cv-form" style={{ marginBottom: 10 }}>
+        {providerPicker}
+      </div>
+
       <button className="btn-secondary" onClick={pick} disabled={state === "parsing"}>
         {state === "parsing" ? "Reading…" : "Upload resume"}
       </button>
@@ -91,15 +153,27 @@ export default function ResumeUpload({ onApplied }) {
               <span className={`status-dot ${usedAi ? "ok" : "pending"}`} />
               <div className="ai-status-sub">
                 {usedAi
-                  ? "Read with local AI — experience and skills included below."
-                  : "Read without AI, so only your contact details and summary were filled. Add the rest by hand, or fix the problem below and upload again."}
+                  ? `Read with ${PROVIDER_LABEL[provider] || provider} — experience and skills included below.`
+                  : `Couldn't read with ${PROVIDER_LABEL[provider] || provider}, so only your contact details and summary were filled.`}
                 {aiNote && (
-                  <div className="ai-status-err">
-                    Local model: {aiNote}
-                  </div>
+                  <div className="ai-status-err">{aiNote}</div>
+                )}
+                {!usedAi && (
+                  <div className="ai-status-err">{hintFor(aiNote, provider)}</div>
                 )}
               </div>
             </div>
+
+            {!usedAi && (
+              <div className="cv-form" style={{ marginBottom: 10 }}>
+                {providerPicker}
+                <div className="form-actions" style={{ marginTop: 6 }}>
+                  <button className="btn-secondary btn-sm" onClick={reparse} disabled={state === "parsing"}>
+                    {state === "parsing" ? "Reading…" : "Read again"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <dl className="kv">
               <dt>Name</dt><dd>{p.name || "—"}</dd>

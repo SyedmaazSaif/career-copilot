@@ -1,6 +1,17 @@
 # HONESTY.md
 
 ## Tested and working (ran locally, saw the result)
+- **Resume AI model choice + DeepSeek model-name fix** — the resume upload now
+  lets the user pick which AI reads it (Ollama / DeepSeek / Custom), defaults to
+  the Settings choice, and when that model isn't ready shows the real error plus
+  a hint and a "read again" button. Root cause found and fixed: the saved model
+  name was "Deepseek" (invalid — DeepSeek only accepts `deepseek-chat` or
+  `deepseek-reasoner`), so every paid call failed and the upload silently fell
+  back to the basic reader. `save_ai_config` now normalizes DeepSeek model names
+  and the Settings UI shows a dropdown of the two valid ones. Verified the
+  provider override routes correctly (`preflight("deepseek")` → "no API key set",
+  `preflight("ollama")` → "local AI is switched off"). 92 tests pass; `npm run
+  build` succeeds.
 - **Netherlands companies** — added 16 companies to the target-companies scanner
   (Optiver, Flow Traders, Maven Securities, BlockTech, Leaseweb, Bitvavo, Stream,
   Plumerai, GreenFlux, Gerimedica, OLYX, Flexport, A2G Consulting, Wypoon,

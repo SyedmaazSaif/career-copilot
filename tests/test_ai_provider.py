@@ -83,15 +83,20 @@ class LlmDispatchTests(unittest.TestCase):
 
     def test_deepseek_routes_away_from_ollama(self):
         with mock.patch.dict("os.environ", {"AI_PROVIDER": "deepseek"}):
-            self.assertIs(llm._client(), dc)
+            self.assertIs(llm._client_for(), dc)
 
     def test_custom_routes_to_remote_client(self):
         with mock.patch.dict("os.environ", {"AI_PROVIDER": "custom"}):
-            self.assertIs(llm._client(), dc)
+            self.assertIs(llm._client_for(), dc)
 
     def test_ollama_routes_to_ollama(self):
         with mock.patch.dict("os.environ", {"AI_PROVIDER": "ollama"}):
-            self.assertIs(llm._client(), ollama_client)
+            self.assertIs(llm._client_for(), ollama_client)
+
+    def test_explicit_provider_override(self):
+        self.assertIs(llm._client_for("ollama"), ollama_client)
+        self.assertIs(llm._client_for("deepseek"), dc)
+        self.assertIs(llm._client_for("custom"), dc)
 
 
 if __name__ == "__main__":

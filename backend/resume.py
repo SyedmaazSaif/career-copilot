@@ -1,10 +1,11 @@
 """Read a resume file and turn it into profile data.
 
 Text extraction is deterministic (pypdf / python-docx). Turning that text into
-structured profile records uses the optional local Ollama model when available;
-without it, a deterministic heuristic still fills contact details, title, skills,
-work experience and education, so an upload is useful even when the local model
-is switched off or crashes. No paid API is ever used.
+structured profile records uses the configured AI model when available (the
+local Ollama model, or a paid OpenAI-compatible API the user brings their own
+key for); without it, a deterministic heuristic still fills contact details,
+title, skills, work experience and education, so an upload is useful even when
+no AI is available.
 
 The AI pass is deliberately split into three small, section-scoped calls rather
 than one request for the whole schema. A local model on a laptop is slow in
@@ -140,17 +141,17 @@ def _section(sections: dict[str, str], *names: str, fallback: str = "") -> str:
 
 # --- public entry point ----------------------------------------------------
 
-def parse_resume(text: str) -> tuple[dict, bool, str | None]:
+def parse_resume(text: str, provider: str | None = None) -> tuple[dict, bool, str | None]:
     """Return (profile_data, used_ai, error). profile_data is shaped like
     master_profile.yaml. The regex pass always runs; the AI pass enriches it
-    when the local model is available and fast enough to answer."""
+    with the chosen `provider` (None = the model set in Settings)."""
     text = (text or "").strip()
     if not text:
         return {"profile": {}}, False, None
 
     data = _parse_heuristic(text)
 
-    err = llm.preflight()
+    err = llm.preflight(provider)
     if err:
         return data, False, err
 
@@ -158,21 +159,21 @@ def parse_resume(text: str) -> tuple[dict, bool, str | None]:
     used_ai = False
     errors: list[str] = []
 
-    prof, err = _ai_profile(sections, text)
+    prof, err = _ai_profile(sections, text, provider)
     if prof:
         _merge_profile(data["profile"], prof)
         used_ai = True
     elif err:
         errors.append("details: " + err)
 
-    exps, err = _ai_experiences(sections, text)
+    exps, err = _ai_experiences(sections, text, provider)
     if exps:
         data["experiences"] = exps
         used_ai = True
     elif err:
         errors.append("experience: " + err)
 
-    extras, err = _ai_extras(sections, text)
+    extras, err = _ai_extras(sections, text, provider)
     if extras:
         for key in ("education", "certifications", "skills", "languages"):
             if extras.get(key):
@@ -210,7 +211,7 @@ _RULES = (
 )
 
 
-def _ai_profile(sections: dict[str, str], text: str) -> tuple[dict | None, str | None]:
+def _ai_profile(sections: dict[str, str], text: str, provider: str | None = None) -> tuple[dict | None, str | None]:
     """Header plus summary only -- a small prompt and a small answer."""
     parts = [p for p in (sections.get("header"), sections.get("summary")) if p]
     snippet = "\n\n".join(parts) or text[:2000]
@@ -219,6 +220,7 @@ def _ai_profile(sections: dict[str, str], text: str) -> tuple[dict | None, str |
         "Return JSON with keys: name, title, location, summary. The title is "
         "the person's current job title. The summary is at most 3 sentences "
         "drawn from the text.",
+        provider=provider,
         system="You extract resume header details into JSON. " + _RULES,
         timeout=120,
     )
@@ -227,7 +229,7 @@ def _ai_profile(sections: dict[str, str], text: str) -> tuple[dict | None, str |
     return (data if isinstance(data, dict) else None), None
 
 
-def _ai_experiences(sections: dict[str, str], text: str) -> tuple[list | None, str | None]:
+def _ai_experiences(sections: dict[str, str], text: str, provider: str | None = None) -> tuple[list | None, str | None]:
     """The expensive call -- scoped to the experience section so the model does
     not re-read the whole resume."""
     snippet = _section(sections, "experience", fallback=text)
@@ -237,6 +239,7 @@ def _ai_experiences(sections: dict[str, str], text: str) -> tuple[list | None, s
         "objects with the keys company, role, location, dates, and bullets. "
         "bullets is a list of strings. Copy each bullet across verbatim and "
         "keep every number exactly as written.",
+        provider=provider,
         system="You extract work experience into JSON. " + _RULES,
         timeout=420,
     )
@@ -270,7 +273,7 @@ def _norm_experience(exp: dict) -> dict:
     }
 
 
-def _ai_extras(sections: dict[str, str], text: str) -> tuple[dict | None, str | None]:
+def _ai_extras(sections: dict[str, str], text: str, provider: str | None = None) -> tuple[dict | None, str | None]:
     """Education, certifications, skills and languages in one short call."""
     parts = [
         sections.get("education"), sections.get("certifications"),
@@ -284,6 +287,7 @@ def _ai_extras(sections: dict[str, str], text: str) -> tuple[dict | None, str | 
         "name, issuer, date), skills (list of objects with name, category, "
         "proficiency), languages (list of objects with name, proficiency). "
         "Skill names are short, at most 4 words.",
+        provider=provider,
         system="You extract resume qualifications into JSON. " + _RULES,
         timeout=240,
     )

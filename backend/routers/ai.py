@@ -5,7 +5,7 @@ OpenAI-compatible API like DeepSeek with the user's own key). Every consumer
 falls back to deterministic logic when no AI is available, so the app never
 hard-requires a paid API.
 """
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import deepseek_client, envfile, hardware, llm, ollama_setup, resume as resume_mod
@@ -54,7 +54,9 @@ def save_ai_config(payload: AiConfigIn):
         model = (payload.model or "").strip()
         base = (payload.base_url or "").strip()
         if provider == "deepseek":
-            model = model or "deepseek-chat"
+            model = (model or "deepseek-chat").strip().lower()
+            if model not in ("deepseek-chat", "deepseek-reasoner"):
+                model = "deepseek-chat"
             base = base or "https://api.deepseek.com"
         if not model:
             raise HTTPException(422, "a model name is required")
@@ -88,8 +90,14 @@ def ollama_setup_status():
 
 
 @router.post("/resume/parse", response_model=ResumeParseResult)
-async def parse_resume(file: UploadFile = File(...)):
-    """Read an uploaded resume (PDF/DOCX/TXT) into profile data for preview."""
+async def parse_resume(
+    provider: str | None = Form(None),
+    file: UploadFile = File(...),
+):
+    """Read an uploaded resume (PDF/DOCX/TXT) into profile data for preview.
+
+    `provider` picks which AI model reads it for this request (ollama, deepseek,
+    custom); None = the model set in Settings."""
     content = await file.read()
     if not content:
         raise HTTPException(422, "empty file")
@@ -100,7 +108,10 @@ async def parse_resume(file: UploadFile = File(...)):
         raise HTTPException(
             422, "couldn't read any text from that file (is it a scanned image?)"
         )
-    data, used_ai, error = resume_mod.parse_resume(text)
+    prov = (provider or "").strip().lower() or None
+    if prov and prov not in ("ollama", "deepseek", "custom"):
+        raise HTTPException(422, "provider must be ollama, deepseek or custom")
+    data, used_ai, error = resume_mod.parse_resume(text, provider=prov)
     return ResumeParseResult(data=data, used_ai=used_ai, error=error)
 
 

@@ -88,7 +88,11 @@ export default function AiProvider() {
 
       <label className="field" style={{ maxWidth: 420 }}>
         <span className="field-label">Provider</span>
-        <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+        <select value={provider} onChange={(e) => {
+          const v = e.target.value;
+          setProvider(v);
+          if (v === "deepseek" && !model) setModel("deepseek-chat");
+        }}>
           <option value="ollama">Ollama — free, on this device</option>
           <option value="deepseek">DeepSeek — paid, needs an API key</option>
           <option value="custom">Custom API — bring your own model</option>
@@ -97,15 +101,25 @@ export default function AiProvider() {
 
       {remote && (
         <>
-          <label className="field" style={{ maxWidth: 420, marginTop: 12 }}>
-            <span className="field-label">Model name</span>
-            <input
-              className="mono"
-              value={model}
-              placeholder={provider === "deepseek" ? "deepseek-chat" : "e.g. gpt-4o-mini"}
-              onChange={(e) => setModel(e.target.value)}
-            />
-          </label>
+          {provider === "deepseek" ? (
+            <label className="field" style={{ maxWidth: 420, marginTop: 12 }}>
+              <span className="field-label">Model</span>
+              <select value={model || "deepseek-chat"} onChange={(e) => setModel(e.target.value)}>
+                <option value="deepseek-chat">deepseek-chat — fast, general</option>
+                <option value="deepseek-reasoner">deepseek-reasoner — slower, deeper reasoning</option>
+              </select>
+            </label>
+          ) : (
+            <label className="field" style={{ maxWidth: 420, marginTop: 12 }}>
+              <span className="field-label">Model name</span>
+              <input
+                className="mono"
+                value={model}
+                placeholder="e.g. gpt-4o-mini"
+                onChange={(e) => setModel(e.target.value)}
+              />
+            </label>
+          )}
 
           {provider === "custom" && (
             <label className="field" style={{ maxWidth: 420, marginTop: 12 }}>
